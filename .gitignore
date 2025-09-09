@@ -1,0 +1,32 @@
+# Virtual environments
+.venv/
+env/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+
+# Tool caches
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Editors/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local env and secrets
+.env
+*.env.local
+
+# Databases and large binaries (如需共享请用脚本生成或小样本)
+*.db
+*.sqlite
+*.sqlite3
