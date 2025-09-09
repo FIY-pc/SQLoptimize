@@ -25,12 +25,6 @@ python -m pip install -r requirements.txt
 copy .env.example .env
 ```
 
-编辑 `.env`（目前使用的是阿里的qwen-plus模型）：
-
-OPENAI_API_KEY = 你的APIKey
-OPENAI_BASE_URL = https://dashscope.aliyuncs.com/compatible-mode/v1 
-MODEL=qwen-plus
-
 5) 运行项目(示例)
 ```bash
 python -m src.main "SELECT id, name FROM t1 WHERE status = 'ok' UNION ALL SELECT id, name FROM t2 WHERE status = 'ok' ORDER BY id ASC, name ASC;"
