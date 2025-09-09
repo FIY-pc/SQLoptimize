@@ -9,15 +9,11 @@ from pathlib import Path
 
 console = Console()
 
-
-def run(sql: str) -> None:
+# 供 API/CLI 复用的执行函数，从项目根目录读取 rules.json
+def execute_pipeline(sql: str) -> State:
     app = build_graph()
-    init_state: State = {"input_sql": sql}
-    # 确保有 history，便于在加载规则时记录日志
-    if "history" not in init_state:
-        init_state["history"] = []
+    init_state: State = {"input_sql": sql, "history": []}
 
-    # 自动从项目根目录加载 rules.json（若存在则注入到状态）
     try:
         root = Path(__file__).resolve().parents[1]
         rules_file = root / "rules.json"
@@ -33,7 +29,6 @@ def run(sql: str) -> None:
                     rules = json.loads(txt)
             if isinstance(rules, dict):
                 init_state["rewrite_rules"] = rules
-                # 记录已加载的规则条数
                 try:
                     count = len(rules.get("rules", [])) if isinstance(rules.get("rules", None), list) else 0
                 except Exception:
@@ -44,13 +39,14 @@ def run(sql: str) -> None:
         else:
             init_state["history"].append("[main] 未发现 rules.json（将不注入自定义改写规则）")
     except Exception as e:
-        # 读取失败时记录错误，便于排查
         init_state["history"].append(f"[main] 读取 rules.json 失败：{e}")
-    except Exception:
-        # 读取失败时忽略，不影响无规则运行
-        pass
 
     final_state: State = app.invoke(init_state)  # type: ignore
+    return final_state
+
+
+def run(sql: str) -> None:
+    final_state = execute_pipeline(sql)
 
     optimized = final_state.get("optimized_sql") or "(未生成)"
     plan = final_state.get("plan_feedback") or "(无计划反馈)"

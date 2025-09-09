@@ -49,7 +49,6 @@ def optimize_node(state: State) -> State:
 
     prompt_system = (
         "你是一名资深数据库性能工程师。请在语义等价的前提下优化并规范化用户提供的 SQL：\n"
-        "- 若用户提供了“自定义改写规则”，请在不违背 SQL 语义与排序/分页语义的前提下，尽可能遵循这些规则进行改写。\n"
         "- 仅输出最终 SQL，使用 ```sql 代码块包裹；不要输出其它解释。"
     )
     prompt_user = f"原始 SQL：\n```sql\n{input_sql}\n```\n请给出优化后的 SQL。"
@@ -121,11 +120,26 @@ def plan_check_node(state: State) -> State:
 
     # 静态分析（LLM）
     prompt_system = (
-        "你是数据库优化顾问。请对给定 SQL 进行静态分析，指出潜在性能问题并提出改进建议。\n"
+        "你是数据库优化顾问。请对优化前后的SQL进行分析\n"
         "输出要点：用一句话简明扼要地分析改写过程"
     )
-    prompt_user = f"待分析 SQL：\n```sql\n{sql}\n```"
+    
+    input_sql = (state.get("input_sql") or "").strip()
+    optimized_sql = (state.get("optimized_sql") or "").strip()
 
+    if optimized_sql:
+        prompt_user = (
+            f"改写前SQL：\n```sql\n{input_sql}\n```\n"
+            f"改写后SQL：\n```sql\n{optimized_sql}\n```\n"
+            "请分析改写过程。"
+        )
+    else:
+        prompt_user = (
+            f"待分析 SQL：\n```sql\n{input_sql}\n```\n"
+            "请给出静态分析与改进建议。"
+        )
+
+    # 后续把 prompt_user 传给 LLM
     try:
         llm = get_llm()
         content = llm.chat([

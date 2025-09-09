@@ -25,7 +25,12 @@ python -m pip install -r requirements.txt
 copy .env.example .env
 ```
 
-5) 运行项目(示例)
+5) 直接运行(示例)
 ```bash
 python -m src.main "SELECT id, name FROM t1 WHERE status = 'ok' UNION ALL SELECT id, name FROM t2 WHERE status = 'ok' ORDER BY id ASC, name ASC;"
+```
+
+6) 启动后端服务
+```bash
+uvicorn src.api:app --reload
 ```
