@@ -1,10 +1,10 @@
-from typing import Dict, Any
 import re
 import sqlite3
 import json
 
 from .state import State
 from .llm import get_llm
+from .sql_equality.test import verify_sql_equivalence
 from .config import get_settings
 
 
@@ -77,7 +77,8 @@ def optimize_node(state: State) -> State:
         })
 
     llm = get_llm()
-    content = llm.chat(messages)
+    on_chunk = state.get("on_chunk")
+    content = llm.chat(messages, on_chunk=on_chunk)
     optimized_sql = _extract_sql_from_text(content)
     state["optimized_sql"] = optimized_sql
     state["history"].append("[optimize] 已生成优化 SQL")
@@ -142,15 +143,33 @@ def plan_check_node(state: State) -> State:
     # 后续把 prompt_user 传给 LLM
     try:
         llm = get_llm()
+        on_chunk = state.get("on_chunk")
         content = llm.chat([
             {"role": "system", "content": prompt_system},
             {"role": "user", "content": prompt_user},
-        ], temperature=0.1)
+        ], temperature=0.1, on_chunk=on_chunk)
         state["plan_feedback"] = content.strip()
         state["history"].append("[plan] 已生成静态分析反馈")
     except Exception as e:
         state["plan_feedback"] = f"(静态分析不可用：{e})"
         state["history"].append("[plan] 静态分析失败")
+    
+    # 使用 z3 验证 SQL 的等价性
+    z3_jar_path = settings.z3_jar_path
+    db_schema = state.get("db_schema")
+    if not db_schema:
+        state["history"].append("[plan] 缺少数据库 schema，跳过 z3 等价性验证")
+        return state
+    if not optimized_sql:
+        state["history"].append("[plan] 缺少优化后的 SQL，跳过 z3 等价性验证")
+        return state
+        
+    result = verify_sql_equivalence(z3_jar_path, input_sql, optimized_sql, db_schema)
+    if result["success"]:
+        state["z3_result"] = result["equivalent"]
+        state["history"].append("[plan] 已使用 z3 验证 SQL 的等价性")
+    else:
+        state["history"].append("[plan] z3 验证 SQL 的等价性失败")
 
     return state
 

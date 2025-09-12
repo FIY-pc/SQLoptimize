@@ -16,6 +16,7 @@ class Settings:
     model: str
     db_path: Optional[str]
     request_timeout: int = 60  # 秒
+    z3_jar_path: str = "./lib/sqlsolver-v1.1.0.jar"
 
     @staticmethod
     def from_env() -> "Settings":
@@ -23,12 +24,14 @@ class Settings:
         base_url = os.getenv("OPENAI_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1").strip()
         model = os.getenv("MODEL", "qwen-plus").strip()
         db_path = os.getenv("DB_PATH", "").strip() or None
+        z3_jar_path = os.getenv("Z3_JAR_PATH", "").strip() or None
 
         return Settings(
             api_key=api_key,
             base_url=base_url,
             model=model,
             db_path=db_path,
+            z3_jar_path=z3_jar_path,
         )
 
 

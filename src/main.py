@@ -1,13 +1,13 @@
 import argparse
 from rich.console import Console
 from rich.panel import Panel
-
+from typing import Optional
 from .pipelines import execute_pipeline_cli
 
 console = Console()
 
-def run(sql: str) -> None:
-    final_state = execute_pipeline_cli(sql)
+def run(sql: str, db_schema: Optional[str] = None) -> None:
+    final_state = execute_pipeline_cli(sql, db_schema)
 
     optimized = final_state.get("optimized_sql") or "(未生成)"
     plan = final_state.get("plan_feedback") or "(无计划反馈)"
@@ -24,8 +24,9 @@ def run(sql: str) -> None:
 def main():
     parser = argparse.ArgumentParser(description="SQL 优化与计划检查（基于 LangGraph 与 qwen-plus）")
     parser.add_argument("sql", type=str, help="要优化的 SQL 语句（用引号括起来）")
+    parser.add_argument("--db_schema", type=str, required=False, default="", help="数据库 schema")
     args = parser.parse_args()
-    run(args.sql)
+    run(args.sql, args.db_schema)
 
 
 if __name__ == "__main__":
