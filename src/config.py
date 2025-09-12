@@ -24,7 +24,7 @@ class Settings:
         base_url = os.getenv("OPENAI_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1").strip()
         model = os.getenv("MODEL", "qwen-plus").strip()
         db_path = os.getenv("DB_PATH", "").strip() or None
-        z3_jar_path = os.getenv("Z3_JAR_PATH", "").strip() or None
+        z3_jar_path = os.getenv("Z3_JAR_PATH", "").strip()
 
         return Settings(
             api_key=api_key,
