@@ -7,7 +7,15 @@ logging.basicConfig(level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="SQLoptimize API", version="0.1.0")
+app = FastAPI(
+    title="SQLoptimize API", 
+    version="0.1.0",
+    description="SQLoptimize API",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    responses={404: {"description": "Not found"}},
+)
 
 add_middleware(app)
 

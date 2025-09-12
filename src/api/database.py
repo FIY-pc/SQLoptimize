@@ -1,7 +1,11 @@
-from sqlalchemy import create_engine, declarative_base
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from src.config import get_settings
 from contextlib import contextmanager
+import logging
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -14,8 +18,11 @@ engine = create_engine(
     pool_timeout=30,
     pool_pre_ping=True,
     pool_recycle=1800,
-    )
+)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+logger.info(f"Database connected")
+
 Base = declarative_base()
 
 def get_db() -> Session:
@@ -39,3 +46,4 @@ def get_db_context():
 
 def create_tables():
     Base.metadata.create_all(bind=engine)
+    logger.info(f"Database tables created")

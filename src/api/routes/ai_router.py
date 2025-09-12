@@ -8,8 +8,7 @@ import logging
 from pydantic import BaseModel
 from typing import List, Literal, Union, Optional
 
-"""日志配置"""
-logging.basicConfig(level=logging.INFO)
+"""日志"""
 logger = logging.getLogger(__name__)
 
 """路由配置"""
