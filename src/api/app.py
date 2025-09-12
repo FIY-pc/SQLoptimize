@@ -56,7 +56,7 @@ async def gen_stream_sse(req: OptimizeRequest):
 
         # 一个回调函数，用于流式输出 LLM 的 chunk给前端
         def on_chunk(llm_chunk):
-            if llm_chunk == None:
+            if llm_chunk is None:
                 queue.put_nowait(None)
                 return
 
