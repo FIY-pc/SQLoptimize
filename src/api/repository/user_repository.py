@@ -16,13 +16,23 @@ class UserRepository:
     def create(self, user_data: dict) -> User:
         """创建用户"""
         try:
-            with get_db_context() as db:
+            if self.db:
+                # 如果传入了db会话，直接使用
                 user = User(**user_data)
-                db.add(user)
-                db.flush()
-                db.refresh(user)
+                self.db.add(user)
+                self.db.flush()
+                self.db.refresh(user)
                 logger.info(f"用户创建成功: {user.email}")
                 return user
+            else:
+                # 如果没有传入db会话，使用上下文管理器
+                with get_db_context() as db:
+                    user = User(**user_data)
+                    db.add(user)
+                    db.flush()
+                    db.refresh(user)
+                    logger.info(f"用户创建成功: {user.email}")
+                    return user
         except Exception as e:
             logger.error(f"创建用户失败: {e}")
             raise
@@ -30,9 +40,13 @@ class UserRepository:
     def get_by_id(self, user_id: int) -> Optional[User]:
         """根据ID获取用户"""
         try:
-            with get_db_context() as db:
-                user = db.query(User).filter(User.id == user_id).first()
+            if self.db:
+                user = self.db.query(User).filter(User.id == user_id).first()
                 return user
+            else:
+                with get_db_context() as db:
+                    user = db.query(User).filter(User.id == user_id).first()
+                    return user
         except Exception as e:
             logger.error(f"根据ID获取用户失败: {e}")
             raise
@@ -40,9 +54,13 @@ class UserRepository:
     def get_by_email(self, email: str) -> Optional[User]:
         """根据邮箱获取用户"""
         try:
-            with get_db_context() as db:
-                user = db.query(User).filter(User.email == email).first()
+            if self.db:
+                user = self.db.query(User).filter(User.email == email).first()
                 return user
+            else:
+                with get_db_context() as db:
+                    user = db.query(User).filter(User.email == email).first()
+                    return user
         except Exception as e:
             logger.error(f"根据邮箱获取用户失败: {e}")
             raise
@@ -102,23 +120,14 @@ class UserRepository:
             logger.error(f"删除用户失败: {e}")
             raise
     
-    def authenticate(self, email: str, password: str) -> Optional[User]:
-        """用户认证"""
-        try:
-            with get_db_context() as db:
-                user = db.query(User).filter(
-                    and_(User.email == email, User.password == password)
-                ).first()
-                return user
-        except Exception as e:
-            logger.error(f"用户认证失败: {e}")
-            raise
-    
     def exists_by_email(self, email: str) -> bool:
         """检查邮箱是否已存在"""
         try:
-            with get_db_context() as db:
-                return db.query(User).filter(User.email == email).first() is not None
+            if self.db:
+                return self.db.query(User).filter(User.email == email).first() is not None
+            else:
+                with get_db_context() as db:
+                    return db.query(User).filter(User.email == email).first() is not None
         except Exception as e:
             logger.error(f"检查邮箱是否存在失败: {e}")
             raise
@@ -126,8 +135,11 @@ class UserRepository:
     def exists_by_name(self, name: str) -> bool:
         """检查用户名是否已存在"""
         try:
-            with get_db_context() as db:
-                return db.query(User).filter(User.name == name).first() is not None
+            if self.db:
+                return self.db.query(User).filter(User.name == name).first() is not None
+            else:
+                with get_db_context() as db:
+                    return db.query(User).filter(User.name == name).first() is not None
         except Exception as e:
             logger.error(f"检查用户名是否存在失败: {e}")
             raise

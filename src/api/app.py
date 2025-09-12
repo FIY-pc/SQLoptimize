@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from src.api.middleware import add_middleware
-from src.api.routes.ai_router import ai_router
+from src.api.router import ai_router, auth_router
+from src.api.database import ensure_db_setup, create_tables
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -19,7 +20,13 @@ app = FastAPI(
 
 add_middleware(app)
 
+logger.info("Database setup start")
+ensure_db_setup()
+create_tables()
+logger.info("Database setup complete")
+
 app.include_router(ai_router)
+app.include_router(auth_router)
 
 # 健康检查
 @app.get("/api/ping")
