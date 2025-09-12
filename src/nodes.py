@@ -166,9 +166,10 @@ def plan_check_node(state: State) -> State:
         
     result = verify_sql_equivalence(z3_jar_path, input_sql, optimized_sql, db_schema)
     if result["success"]:
-        state["z3_result"] = result["equivalent"]
+        state["z3_result"] = ["Equivalent"] if result["equivalent"] else ["Not Equivalent"]
         state["history"].append("[plan] 已使用 z3 验证 SQL 的等价性")
     else:
+        state["z3_result"] = ["Z3 verification failed"]
         state["history"].append("[plan] z3 验证 SQL 的等价性失败")
 
     return state
