@@ -63,7 +63,17 @@ async def gen_stream_sse(req: OptimizeRequest):
             if isinstance(llm_chunk, str):
                 llm_chunk = llm_chunk.strip()
             else:
-                llm_chunk = llm_chunk.dict()
+                if hasattr(llm_chunk, 'dict'):
+                    llm_chunk = llm_chunk.dict()
+                elif isinstance(llm_chunk, dict):
+                    pass  # use as is
+                elif hasattr(llm_chunk, '__dict__'):
+                    llm_chunk = llm_chunk.__dict__
+                else:
+                    try:
+                        llm_chunk = json.loads(llm_chunk)
+                    except Exception:
+                        logger.error(f"Cannot convert llm_chunk to dict: {llm_chunk}")
 
             data = Chunk(
                 type="llm_chunk", 
