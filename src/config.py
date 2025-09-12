@@ -16,7 +16,7 @@ class Settings:
     model: str
     db_path: Optional[str]
     request_timeout: int = 60  # 秒
-    z3_jar_path: str = "./lib/sqlsolver-v1.1.0.jar"
+    z3_jar_path: str = "./src/sql_equality/lib/sqlsolver-v1.1.0.jar"
 
     @staticmethod
     def from_env() -> "Settings":
