@@ -93,7 +93,7 @@ class JWTManager:
                 logger.warning("令牌缺少过期时间")
                 return None
             
-            if datetime.utcnow() > datetime.fromtimestamp(exp):
+            if datetime.utcnow() > datetime.utcfromtimestamp(exp):
                 logger.warning("令牌已过期")
                 return None
             
