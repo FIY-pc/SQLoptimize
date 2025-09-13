@@ -1,8 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr, Field
 from src.api.repository import UserRepository
-from src.api.utils import jwt_manager, password_manager
+from src.api.utils import jwt_manager, password_manager, get_current_user
 from src.api.database import get_db_context
 import logging
 
@@ -13,9 +12,6 @@ auth_router = APIRouter(
     tags=["auth"],
     responses={404: {"description": "Not found"}},
 )
-
-# HTTP Bearer认证
-security = HTTPBearer()
 
 # 请求和响应模型
 class LoginRequest(BaseModel):
@@ -48,48 +44,7 @@ class UserInfo(BaseModel):
     email: str = Field(..., description="邮箱")
     created_at: str = Field(..., description="创建时间")
 
-# 依赖项：获取当前用户
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
-    """获取当前认证用户"""
-    token = credentials.credentials
-    payload = jwt_manager.verify_token(token, "access")
-    
-    if payload is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="无效的访问令牌",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    user_id = payload.sub
-    if user_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="令牌中缺少用户信息",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    # 从数据库获取用户信息
-    with get_db_context() as db:
-        user_repo = UserRepository(db)
-        user = user_repo.get_by_id(int(user_id))
-        if user is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="用户不存在",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        
-        # 提取用户数据，避免会话依赖
-        user_id = user.id
-        user_name = user.name
-        user_email = user.email
-    
-    return {
-        "id": user_id,
-        "name": user_name,
-        "email": user_email
-    }
+
 
 @auth_router.post("/register", response_model=LoginResponse,summary="用户注册")
 async def register(request: RegisterRequest):
