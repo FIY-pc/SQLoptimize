@@ -58,7 +58,7 @@ class DatabaseConnectionRepository:
             else:
                 with get_db_context() as db:
                     connection = db.query(DatabaseConnection).filter(DatabaseConnection.database_name == database_name).first()
-                return connection
+                    return connection
         except Exception as e:
             logger.error(f"根据数据库名称获取数据库连接失败: {e}")
             raise
