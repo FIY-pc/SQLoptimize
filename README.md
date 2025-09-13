@@ -39,4 +39,6 @@ uvicorn src.api:app --reload
 
 启动后端服务后，访问 `http://localhost:8000/docs` 查看 API 文档。
 
+访问 `http://localhost:8000/openapi.json` 可获取 OpenAPI 规范。
+
 或者可以看这个在线版：链接: https://hust-sql-optimimize.apifox.cn  访问密码: sqlopt123
