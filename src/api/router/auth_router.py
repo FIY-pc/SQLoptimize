@@ -36,8 +36,6 @@ class RefreshTokenRequest(BaseModel):
 class RefreshTokenResponse(BaseModel):
     access_token: str = Field(..., description="访问令牌")
     token_type: str = Field(default="bearer", description="令牌类型")
-    token_type: str = "bearer"
-
 class UserInfo(BaseModel):
     id: int = Field(..., description="用户ID")
     name: str = Field(..., description="用户名")
