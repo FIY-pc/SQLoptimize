@@ -64,11 +64,11 @@ async def get_user_models(
     """获取当前用户的模型连接列表"""
     try:
         with get_db_context() as db:
-            user_repo = ModelConnectionRepository(db)
+            model_repo = ModelConnectionRepository(db)
             if model:
-                connections = user_repo.get_by_user_and_model(current_user["id"], model)
+                connections = model_repo.get_by_user_and_model(current_user["id"], model)
             else:
-                connections = user_repo.get_by_user_id(current_user["id"], skip, limit)
+                connections = model_repo.get_by_user_id(current_user["id"], skip, limit)
             
             # 转换为响应模型（不包含api_key）
             model_responses = []
@@ -85,7 +85,7 @@ async def get_user_models(
                 ))
             
             # 获取总数（用于分页）
-            total_connections = user_repo.get_by_user_id(current_user["id"], 0, 1000)
+            total_connections = model_repo.get_by_user_id(current_user["id"], 0, 1000)
             total = len(total_connections)
             
             logger.info(f"获取用户模型连接列表成功，用户ID: {current_user['id']}, 数量: {len(model_responses)}")
@@ -112,10 +112,10 @@ async def create_model_connection(
     """创建新的模型连接"""
     try:
         with get_db_context() as db:
-            user_repo = ModelConnectionRepository(db)
+            model_repo = ModelConnectionRepository(db)
             
             # 检查模型名称是否已存在
-            if user_repo.exists_by_name(request.model_name):
+            if model_repo.exists_by_name(request.model_name):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="模型名称已存在"
@@ -132,7 +132,7 @@ async def create_model_connection(
                 "user_id": current_user["id"]
             }
             
-            connection = user_repo.create(connection_data)
+            connection = model_repo.create(connection_data)
             
             # 转换为响应模型（不包含api_key）
             response = ModelConnectionResponse(
@@ -166,8 +166,8 @@ async def get_model_connection(
     """获取指定的模型连接信息"""
     try:
         with get_db_context() as db:
-            user_repo = ModelConnectionRepository(db)
-            connection = user_repo.get_by_id(connection_id)
+            model_repo = ModelConnectionRepository(db)
+            connection = model_repo.get_by_id(connection_id)
             
             if not connection:
                 raise HTTPException(
@@ -215,10 +215,10 @@ async def update_model_connection(
     """更新模型连接信息"""
     try:
         with get_db_context() as db:
-            user_repo = ModelConnectionRepository(db)
+            model_repo = ModelConnectionRepository(db)
             
             # 检查模型连接是否存在
-            connection = user_repo.get_by_id(connection_id)
+            connection = model_repo.get_by_id(connection_id)
             if not connection:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
@@ -234,7 +234,7 @@ async def update_model_connection(
             
             # 如果更新模型名称，检查是否与其他连接冲突
             if request.model_name and request.model_name != connection.model_name:
-                if user_repo.exists_by_name(request.model_name):
+                if model_repo.exists_by_name(request.model_name):
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="模型名称已存在"
@@ -253,7 +253,7 @@ async def update_model_connection(
                 )
             
             # 更新模型连接
-            updated_connection = user_repo.update(connection_id, update_data)
+            updated_connection = model_repo.update(connection_id, update_data)
             
             # 转换为响应模型（不包含api_key）
             response = ModelConnectionResponse(
@@ -287,10 +287,10 @@ async def delete_model_connection(
     """删除模型连接"""
     try:
         with get_db_context() as db:
-            user_repo = ModelConnectionRepository(db)
+            model_repo = ModelConnectionRepository(db)
             
             # 检查模型连接是否存在
-            connection = user_repo.get_by_id(connection_id)
+            connection = model_repo.get_by_id(connection_id)
             if not connection:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
@@ -305,7 +305,7 @@ async def delete_model_connection(
                 )
             
             # 删除模型连接
-            success = user_repo.delete(connection_id)
+            success = model_repo.delete(connection_id)
             if not success:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
