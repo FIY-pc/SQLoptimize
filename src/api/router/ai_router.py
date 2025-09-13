@@ -5,7 +5,7 @@ import asyncio
 from src.pipelines import execute_pipeline_api, execute_pipeline_stream
 from src.api.utils import get_unix_timestamp
 import logging
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Literal, Union, Optional
 
 """日志"""
@@ -21,42 +21,42 @@ ai_router = APIRouter(
 """请求和响应模型"""
 
 class OptimizeRequest(BaseModel):
-    sql: str
-    db_schema: Optional[str] = ""
-    stream: bool = False          # 是否流式输出
-    stream_llm_chunk: Optional[bool] = True # 是否流式输出 LLM 的 chunk
+    sql: str = Field(..., description="SQL语句")
+    db_schema: Optional[str] = Field(default="", description="数据库 schema")
+    stream: bool = Field(default=False, description="是否流式输出")          # 是否流式输出
+    stream_llm_chunk: Optional[bool] = Field(default=True, description="是否流式输出 LLM 的 chunk") # 是否流式输出 LLM 的 chunk
 
 class OptimizeResponse(BaseModel):
-    input_sql: str
-    optimized_sql: str = ""
-    plan_feedback: str = ""
-    db_schema: str = ""
-    z3_result: List[str] = []
-    history: List[str] = []
-    timestamp: int = 0
+    input_sql: str = Field(..., description="输入 SQL")
+    optimized_sql: str = Field(default="", description="优化后 SQL")
+    plan_feedback: str = Field(default="", description="执行计划或静态分析反馈")
+    db_schema: str = Field(default="", description="数据库 schema")
+    z3_result: List[str] = Field(default=[], description="Z3 验证结果")
+    history: List[str] = Field(default=[], description="历史轨迹")
+    timestamp: int = Field(default=0, description="时间戳")
 
 # 流式输出的响应模型，只包含必要字段
 class NodeChunk(BaseModel):
-    type: str = "data"
-    node_name: str = ""
-    input_sql: str = ""
-    optimized_sql: str = ""
-    plan_feedback: str = ""
-    db_schema: str = ""
-    z3_result: List[str] = []
-    history: List[str] = []
+    type: str = Field(default="data", description="类型")
+    node_name: str = Field(default="", description="节点名称")
+    input_sql: str = Field(default="", description="输入 SQL")
+    optimized_sql: str = Field(default="", description="优化后 SQL")    
+    plan_feedback: str = Field(default="", description="执行计划或静态分析反馈")    
+    db_schema: str = Field(default="", description="数据库 schema")
+    z3_result: List[str] = Field(default=[], description="Z3 验证结果")
+    history: List[str] = Field(default=[], description="历史轨迹")
 
 class ErrorChunk(BaseModel):
-    error: str = ""
+    error: str = Field(default="", description="错误信息")
 
 class Chunk(BaseModel):
-    type: Literal["node_chunk", "llm_chunk", "error_chunk"] = "node_chunk"
-    data: Union[NodeChunk, str, ErrorChunk]
-    timestamp: int = 0
+    type: Literal["node_chunk", "llm_chunk", "error_chunk"] = Field(default="node_chunk", description="类型")
+    data: Union[NodeChunk, str, ErrorChunk] = Field(..., description="数据")
+    timestamp: int = Field(default=0, description="时间戳")
 
 """路由handler"""
 
-@ai_router.post("/optimize")
+@ai_router.post("/optimize",summary="调用agent优化SQL")
 async def optimize(req: OptimizeRequest):
     if req.stream:
         # 流式响应

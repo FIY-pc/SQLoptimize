@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from src.api.repository import UserRepository
 from src.api.utils import jwt_manager, password_manager
 from src.api.database import get_db_context
@@ -19,33 +19,34 @@ security = HTTPBearer()
 
 # 请求和响应模型
 class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
+    email: EmailStr = Field(..., description="邮箱")
+    password: str = Field(..., description="密码")
 
 class RegisterRequest(BaseModel):
-    name: str
-    email: EmailStr
-    password: str
+    name: str = Field(..., description="用户名")
+    email: EmailStr = Field(..., description="邮箱")
+    password: str = Field(..., description="密码")
 
 class LoginResponse(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-    user_id: int
-    user_name: str
+    access_token: str = Field(..., description="访问令牌")  
+    refresh_token: str = Field(..., description="刷新令牌")
+    token_type: str = Field(default="bearer", description="令牌类型")
+    user_id: int = Field(..., description="用户ID")
+    user_name: str = Field(..., description="用户名")
 
 class RefreshTokenRequest(BaseModel):
-    refresh_token: str
+    refresh_token: str = Field(..., description="刷新令牌")
 
 class RefreshTokenResponse(BaseModel):
-    access_token: str
+    access_token: str = Field(..., description="访问令牌")
+    token_type: str = Field(default="bearer", description="令牌类型")
     token_type: str = "bearer"
 
 class UserInfo(BaseModel):
-    id: int
-    name: str
-    email: str
-    created_at: str
+    id: int = Field(..., description="用户ID")
+    name: str = Field(..., description="用户名")
+    email: str = Field(..., description="邮箱")
+    created_at: str = Field(..., description="创建时间")
 
 # 依赖项：获取当前用户
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
@@ -90,7 +91,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         "email": user_email
     }
 
-@auth_router.post("/register", response_model=LoginResponse)
+@auth_router.post("/register", response_model=LoginResponse,summary="用户注册")
 async def register(request: RegisterRequest):
     """用户注册"""
     try:
@@ -144,7 +145,7 @@ async def register(request: RegisterRequest):
             detail="注册失败，请稍后重试"
         )
 
-@auth_router.post("/login", response_model=LoginResponse)
+@auth_router.post("/login", response_model=LoginResponse,summary="用户登录")
 async def login(request: LoginRequest):
     """用户登录"""
     try:
@@ -194,7 +195,7 @@ async def login(request: LoginRequest):
             detail="登录失败，请稍后重试"
         )
 
-@auth_router.post("/refresh", response_model=RefreshTokenResponse)
+@auth_router.post("/refresh", response_model=RefreshTokenResponse,summary="刷新访问令牌")
 async def refresh_token(request: RefreshTokenRequest):
     """刷新访问令牌"""
     try:
@@ -247,10 +248,10 @@ async def refresh_token(request: RefreshTokenRequest):
         )
 
 class ChangePasswordRequest(BaseModel):
-    old_password: str
-    new_password: str
+    old_password: str = Field(..., description="旧密码")
+    new_password: str = Field(..., description="新密码")
 
-@auth_router.post("/change-password")
+@auth_router.post("/change-password",summary="修改密码")
 async def change_password(
     request: ChangePasswordRequest,
     current_user: dict = Depends(get_current_user)

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from src.api.middleware import add_middleware
-from src.api.router import ai_router, auth_router
+from src.api.router import ai_router, auth_router, model_router
 from src.api.database import ensure_db_setup, create_tables
 import logging
 
@@ -27,8 +27,9 @@ logger.info("Database setup complete")
 
 app.include_router(ai_router)
 app.include_router(auth_router)
+app.include_router(model_router)
 
 # 健康检查
-@app.get("/api/ping")
+@app.get("/api/ping",summary="健康检查")
 async def ping():
     return {"status": "ok"}
