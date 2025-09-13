@@ -19,7 +19,7 @@ class Settings:
     z3_jar_path: str = "./src/sql_equality/lib/sqlsolver-v1.1.0.jar"
     
     # JWT认证相关配置
-    jwt_secret_key: str = "your-secret"
+    jwt_secret_key: str = "INSECURE-DEFAULT-DO-NOT-USE"
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 30
     jwt_refresh_token_expire_days: int = 7
