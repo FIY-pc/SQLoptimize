@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import icon from "@/public/favicon/icon.svg";
 import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
-import { ModelPicker } from "./ModelPicker";
+import { ModelPicker, type ModelPickerProps } from "./ModelPicker";
 import { Thread } from "@/components/assistant-ui/thread";
 import { ThreadList } from "@/components/assistant-ui/thread-list";
 
@@ -74,17 +74,24 @@ const LeftBarSheet: FC = () => {
   );
 };
 
-const Header: FC = () => {
+type HeaderProps = {
+  model?: string;
+  onModelChange?: (v: string) => void;
+};
+
+const Header: FC<HeaderProps> = ({ model, onModelChange }) => {
   return (
-    <header className="flex gap-2">
-      <LeftBarSheet />
-      <ModelPicker />
+    <header className="flex w-full items-center justify-between gap-2">
+      <div className="flex items-center gap-2">
+        <LeftBarSheet />
+        <ModelPicker value={model} onChange={onModelChange} />
+      </div>
       <ButtonWithTooltip
         variant="outline"
         size="icon"
         tooltip="Share"
         side="bottom"
-        className="ml-auto shrink-0"
+        className="shrink-0"
       >
         <ShareIcon className="size-4" />
       </ButtonWithTooltip>
@@ -92,25 +99,10 @@ const Header: FC = () => {
   );
 };
 
-export const Shadcn = () => {
+export const Shadcn: FC<{ model?: string; onModelChange?: (v: string) => void }> = ({ model, onModelChange }) => {
   const sideStyle = "bg-muted/40 px-3 py-2";
   const topStyle = "border-b";
   const leftStyle = "border-r hidden md:block";
 
-  return (
-    <div className="grid h-full w-full grid-flow-col grid-rows-[auto_1fr] md:grid-cols-[250px_1fr]">
-      <div className={cn(sideStyle, leftStyle, topStyle)}>
-        <TopLeft />
-      </div>
-      <div className={cn(sideStyle, leftStyle, "overflow-y-auto")}>
-        <MainLeft />
-      </div>
-      <div className={cn(sideStyle, topStyle)}>
-        <Header />
-      </div>
-      <div className="overflow-hidden bg-background">
-        <Thread />
-      </div>
-    </div>
-  );
+  return <Header model={model} onModelChange={onModelChange} />;
 };

@@ -17,6 +17,10 @@
     "tailwindStylesheet": "app/globals.css"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^2.0.17",
+    "@ai-sdk/deepseek": "^1.0.18",
+    "@ai-sdk/google": "^2.0.14",
+    "@ai-sdk/mistral": "^2.0.14",
     "@ai-sdk/openai": "^2.0.24",
     "@assistant-ui/react": "latest",
     "@assistant-ui/react-ai-sdk": "latest",

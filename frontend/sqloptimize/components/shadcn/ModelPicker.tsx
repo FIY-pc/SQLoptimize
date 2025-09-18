@@ -1,7 +1,6 @@
 "use client";
-import {} from "@radix-ui/react-select";
 import Image from "next/image";
-import type { FC } from "react";
+import { useMemo, useState, type FC } from "react";
 import anthropic from "../../assets/providers/anthropic.svg";
 import fireworks from "../../assets/providers/fireworks.svg";
 import google from "../../assets/providers/google.svg";
@@ -54,13 +53,27 @@ const models = [
     icon: mistral,
   },
 ];
-export const ModelPicker: FC = () => {
+export type ModelPickerProps = {
+  value?: string;
+  onChange?: (value: string) => void;
+};
+
+export const ModelPicker: FC<ModelPickerProps> = ({ value, onChange }) => {
+  const defaultValue = useMemo(() => models[0]?.value ?? "", []);
+  const [inner, setInner] = useState<string>(value ?? defaultValue);
+  const val = value ?? inner;
+
+  const handleChange = (v: string) => {
+    if (onChange) onChange(v);
+    else setInner(v);
+  };
+
   return (
-    <Select defaultValue={models[0]?.value ?? ""}>
+    <Select value={val} onValueChange={handleChange}>
       <SelectTrigger className="max-w-[300px]">
         <SelectValue />
       </SelectTrigger>
-      <SelectContent className="">
+      <SelectContent>
         {models.map((model) => (
           <SelectItem key={model.value} value={model.value}>
             <span className="flex items-center gap-2">
