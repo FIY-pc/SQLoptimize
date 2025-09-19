@@ -35,7 +35,7 @@ class LLMClient:
         if not settings.api_key or settings.api_key == "EMPTY_KEY":
             raise RuntimeError("OPENAI_API_KEY 未设置，请先在环境变量或 .env 中配置。")
 
-        stream_writer = state.get("stream_writer") if state else None
+        stream_writer = state.get("stream_writer") if state is not None else None
 
         try:
             resp = self._client.chat.completions.create(
