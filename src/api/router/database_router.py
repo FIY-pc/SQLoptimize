@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 from src.api.repository import DatabaseConnectionRepository
 from src.api.database import get_db_context
-from src.utils import get_current_user
+from src.api.utils import get_current_user
 import logging
 
 logger = logging.getLogger(__name__)

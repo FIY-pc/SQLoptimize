@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, EmailStr, Field
 from src.api.repository import UserRepository
-from src.utils import jwt_manager, password_manager, get_current_user
+from src.api.utils import jwt_manager, password_manager, get_current_user
 from src.api.database import get_db_context
 import logging
 

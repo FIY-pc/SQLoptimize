@@ -9,7 +9,7 @@ from .graph import build_graph
 # 构建初始状态，从项目根目录读取 rules.json
 def build_init_state(
     sql: str, 
-    stream_writer: StreamWriter,
+    stream_writer: Optional[StreamWriter] = None,
     db_schema: Optional[str] = None
 ) -> State:
     init_state: State = {
@@ -48,10 +48,10 @@ def build_init_state(
     return init_state
 
 # 供 CLI 用的执行函数，同步版本
-def execute_pipeline_cli(sql: str, db_schema: Optional[str] = None) -> State:
+async def execute_pipeline_cli(sql: str, db_schema: Optional[str] = None) -> State:
     app = build_graph()
     init_state = build_init_state(sql=sql, db_schema=db_schema)
-    final_state: State = app.invoke(init_state)  # type: ignore
+    final_state: State = await app.ainvoke(init_state)  # type: ignore
     return final_state
 
 # 供 API 用的执行函数，异步版本
@@ -64,7 +64,7 @@ async def execute_pipeline_api(sql: str, db_schema: Optional[str] = None) -> Sta
 # 流式输出版执行函数
 async def execute_pipeline_stream(
     sql: str, 
-    stream_writer: StreamWriter,
+    stream_writer: Optional[StreamWriter] = None,
     db_schema: Optional[str] = None
 ):
     app = build_graph()

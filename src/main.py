@@ -1,13 +1,14 @@
 import argparse
+import asyncio
 from rich.console import Console
 from rich.panel import Panel
 from typing import Optional
-from .pipelines import execute_pipeline_cli
+from src.pipelines import execute_pipeline_cli
 
 console = Console()
 
 def run(sql: str, db_schema: Optional[str] = None) -> None:
-    final_state = execute_pipeline_cli(sql, db_schema)
+    final_state = asyncio.run(execute_pipeline_cli(sql, db_schema))
 
     optimized = final_state.get("optimized_sql") or "(未生成)"
     plan = final_state.get("plan_feedback") or "(无计划反馈)"

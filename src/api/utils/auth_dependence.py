@@ -1,6 +1,6 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from src.utils import jwt_manager
+from src.api.utils import jwt_manager
 from src.api.repository import UserRepository
 from src.api.database import get_db_context
 
