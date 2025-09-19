@@ -47,6 +47,7 @@ class StreamWriter:
                 yield self.wrap_sse(item)
             except Exception as e:
                 logger.error(f"Error in stream: {e}")
+                await self.error(str(e))
                 break
 
     def wrap_sse(self, data: Chunk) -> str:
@@ -57,6 +58,6 @@ class StreamWriter:
             try:
                 data = json.loads(data)
             except Exception:
-                self.error(f"Invalid data: {data}, type: {type(data)}")
-                return ""
+                logger.error(f"Invalid data: {data}, type: {type(data)}")
+                raise ValueError(f"Invalid data: {data}, type: {type(data)}")
         return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
