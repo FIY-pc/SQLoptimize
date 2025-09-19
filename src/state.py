@@ -1,4 +1,5 @@
 from typing import TypedDict, List, Optional, Dict, Any, Callable
+from src.stream.stream_writer import StreamWriter
 
 class State(TypedDict, total=False):
     # 输入 SQL（用户传入）
@@ -22,5 +23,5 @@ class State(TypedDict, total=False):
     # 自定义改写规则（直接传给 LLM），顶层建议是一个字典
     rewrite_rules: Optional[dict]
 
-    # 流式输出回调函数
-    on_chunk: Optional[Callable[[str], None]]
+    # 流式输出 writer
+    stream_writer: Optional[StreamWriter]

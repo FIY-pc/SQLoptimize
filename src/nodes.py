@@ -13,7 +13,7 @@ def _ensure_history(state: State) -> None:
         state["history"] = []
 
 
-def input_node(state: State) -> State:
+async def input_node(state: State) -> State:
     """输入节点：确保状态初始化并记录输入。"""
     _ensure_history(state)
     sql = state.get("input_sql", "").strip()
@@ -39,7 +39,7 @@ def _extract_sql_from_text(text: str) -> str:
     return text.strip()
 
 
-def optimize_node(state: State) -> State:
+async def optimize_node(state: State) -> State:
     """优化节点：调用 LLM（qwen-plus）对 SQL 进行改写优化。"""
     _ensure_history(state)
     input_sql = state.get("input_sql", "").strip()
@@ -77,15 +77,14 @@ def optimize_node(state: State) -> State:
         })
 
     llm = get_llm()
-    on_chunk = state.get("on_chunk")
-    content = llm.chat(messages, on_chunk=on_chunk)
+    content = await llm.chat(messages, state=state)
     optimized_sql = _extract_sql_from_text(content)
     state["optimized_sql"] = optimized_sql
     state["history"].append("[optimize] 已生成优化 SQL")
     return state
 
 
-def plan_check_node(state: State) -> State:
+async def plan_check_node(state: State) -> State:
     """执行计划检查节点：
     - 若设置 DB_PATH 且可访问，使用 SQLite 的 EXPLAIN QUERY PLAN 获取计划反馈；
     - 否则使用 LLM 对 SQL 进行静态分析，给出潜在问题与建议。
@@ -143,11 +142,10 @@ def plan_check_node(state: State) -> State:
     # 后续把 prompt_user 传给 LLM
     try:
         llm = get_llm()
-        on_chunk = state.get("on_chunk")
-        content = llm.chat([
+        content = await llm.chat([
             {"role": "system", "content": prompt_system},
             {"role": "user", "content": prompt_user},
-        ], temperature=0.1, on_chunk=on_chunk)
+        ], temperature=0.1, state=state)
         state["plan_feedback"] = content.strip()
         state["history"].append("[plan] 已生成静态分析反馈")
     except Exception as e:
@@ -175,7 +173,7 @@ def plan_check_node(state: State) -> State:
     return state
 
 
-def output_node(state: State) -> State:
+async def output_node(state: State) -> State:
     """输出节点：整理最终输出并记录。"""
     _ensure_history(state)
     has_opt = bool(state.get("optimized_sql"))

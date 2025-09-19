@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-import json
-import asyncio
 from src.pipelines import execute_pipeline_api, execute_pipeline_stream
-from src.api.utils import get_unix_timestamp
+from src.utils import get_unix_timestamp
+from src.stream.mapper import map_langgraph_node_chunk
 import logging
 from pydantic import BaseModel, Field
 from typing import List, Literal, Union, Optional
+from src.stream.stream_writer import StreamWriter
 
 """日志"""
 logger = logging.getLogger(__name__)
@@ -61,7 +61,7 @@ async def optimize(req: OptimizeRequest):
     if req.stream:
         # 流式响应
         try:
-            return StreamingResponse(gen_stream_sse(req), media_type="text/event-stream")
+            return StreamingResponse(gen_stream(req), media_type="text/event-stream")
         except Exception as e:
             logger.error(f"Error in optimize: {e}")
             raise HTTPException(status_code=500, detail=str(e))
@@ -82,105 +82,38 @@ async def optimize(req: OptimizeRequest):
             timestamp=get_unix_timestamp()
         )
 
-# 辅助函数，生成标准的 SSE 流
-async def gen_stream_sse(req: OptimizeRequest):
+async def gen_stream(req: OptimizeRequest):
+    stream_writer = StreamWriter()
+    
+    # 启动后台任务处理管道输出
+    async def process_pipeline():
+        try:
+            async for chunk in execute_pipeline_stream(
+                sql=req.sql, 
+                stream_writer=stream_writer,
+                db_schema=req.db_schema or ""
+            ):
+                data = map_langgraph_node_chunk(chunk)
+                await stream_writer.write(data)
+        except Exception as e:
+            logger.error(f"Error in process_pipeline: {e}")
+            await stream_writer.error(str(e))
+        finally:
+            await stream_writer.close()
+    
+    # 启动后台任务
+    import asyncio
+    pipeline_task = asyncio.create_task(process_pipeline())
+    
     try:
-        queue = asyncio.Queue()
-
-        # 一个回调函数，用于流式输出 LLM 的 chunk给前端
-        def on_chunk(llm_chunk):
-            if llm_chunk is None:
-                queue.put_nowait(None)
-                return
-
-            if isinstance(llm_chunk, str):
-                llm_chunk = llm_chunk.strip()
-            else:
-                if hasattr(llm_chunk, 'dict'):
-                    llm_chunk = llm_chunk.dict()
-                elif isinstance(llm_chunk, dict):
-                    pass  # use as is
-                elif hasattr(llm_chunk, '__dict__'):
-                    llm_chunk = llm_chunk.__dict__
-                else:
-                    try:
-                        llm_chunk = json.loads(llm_chunk)
-                    except Exception:
-                        logger.error(f"Cannot convert llm_chunk to dict: {llm_chunk}")
-
-            data = Chunk(
-                type="llm_chunk", 
-                data=llm_chunk, 
-                timestamp=get_unix_timestamp()
-            )
-            queue.put_nowait(data)
-
-        # 执行流式输出
-        async def run_pipeline_stream():
+        # 流式输出数据
+        async for chunk in stream_writer.stream():
+            yield chunk
+    finally:
+        # 确保后台任务完成
+        if not pipeline_task.done():
+            pipeline_task.cancel()
             try:
-                async for chunk in execute_pipeline_stream(
-                    sql=req.sql, 
-                    on_chunk=on_chunk if req.stream_llm_chunk else None,
-                    db_schema=req.db_schema or ""
-                ):
-                    # 处理 LangGraph 节点输出
-                    if not isinstance(chunk, dict):
-                        if hasattr(chunk, 'dict'):
-                            chunk = chunk.dict()
-                        elif hasattr(chunk, '__dict__'):
-                            chunk = chunk.__dict__
-                        else:
-                            chunk = json.loads(chunk)
-
-                    # LangGraph 流式输出结构: {"节点名": State}
-                    node_name, node_data = list(chunk.items())[0]
-                    if isinstance(node_data, dict):
-                        node_data['node_name'] = node_name
-                        filtered_response = NodeChunk(**node_data)
-                        data = Chunk(
-                            type="node_chunk", 
-                            data=filtered_response, 
-                            timestamp=get_unix_timestamp()
-                        )
-                        
-                        # 节点完成时的输出
-                        queue.put_nowait(data)
-                    else:
-                        logger.error(f"Invalid node data: {node_data}")
-                        data = Chunk(
-                            type="error_chunk", 
-                            data=ErrorChunk(error=f"Invalid node data: {node_data}"), 
-                            timestamp=get_unix_timestamp()
-                        )
-                        queue.put_nowait(data)
-                        return
-            except Exception as e:
-                logger.error(f"Error in run_pipeline_stream: {e}")
-                data = Chunk(
-                    type="error_chunk", 
-                    data=ErrorChunk(error=str(e)), 
-                    timestamp=get_unix_timestamp()
-                )
-                queue.put_nowait(data)
-            finally:
-                # 标记结束
-                queue.put_nowait(None)
-
-        pipeline_task = asyncio.create_task(run_pipeline_stream())
-        while True:
-            item = await queue.get()
-            if item is None:
-                break
-            # 格式化为 SSE
-            yield f"data: {json.dumps(item.model_dump(), ensure_ascii=False)}\n\n"
-        await pipeline_task
-
-    except Exception as e:
-        logger.error(f"Error in gen_stream_sse: {e}")
-        data = Chunk(
-            type="error_chunk", 
-            data=ErrorChunk(error=str(e)), 
-            timestamp= get_unix_timestamp()
-        )
-        yield f"data: {json.dumps(data.model_dump(), ensure_ascii=False)}\n\n"
-        return
+                await pipeline_task
+            except asyncio.CancelledError:
+                pass

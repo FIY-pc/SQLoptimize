@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, Depends, status
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 from typing import List, Optional
 from src.api.repository import ModelConnectionRepository
 from src.api.database import get_db_context
-from src.api.utils import get_current_user
+from src.utils import get_current_user
 import logging
 
 logger = logging.getLogger(__name__)

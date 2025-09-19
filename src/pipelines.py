@@ -1,19 +1,21 @@
 import json
 from pathlib import Path
-from typing import Callable, Optional, Any
+from typing import Optional, Any, Sequence
+from src.stream.stream_writer import StreamWriter
+import logging
 from .state import State
 from .graph import build_graph
 
 # 构建初始状态，从项目根目录读取 rules.json
 def build_init_state(
     sql: str, 
-    on_chunk: Optional[Callable[[Any], None]] = None,
+    stream_writer: StreamWriter,
     db_schema: Optional[str] = None
 ) -> State:
     init_state: State = {
         "input_sql": sql, 
         "history": [], 
-        "on_chunk": on_chunk, 
+        "stream_writer": stream_writer, 
         "db_schema": db_schema
     }
 
@@ -62,14 +64,14 @@ async def execute_pipeline_api(sql: str, db_schema: Optional[str] = None) -> Sta
 # 流式输出版执行函数
 async def execute_pipeline_stream(
     sql: str, 
-    on_chunk: Optional[Callable[[Any], None]] = None, 
+    stream_writer: StreamWriter,
     db_schema: Optional[str] = None
 ):
     app = build_graph()
     init_state = build_init_state(
         sql=sql, 
-        on_chunk=on_chunk, 
+        stream_writer=stream_writer,
         db_schema=db_schema
     )
-    async for chunk in app.astream(init_state):
+    async for chunk in app.astream(input=init_state):
         yield chunk
