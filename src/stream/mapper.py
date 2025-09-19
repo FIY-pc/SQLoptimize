@@ -27,7 +27,7 @@ def map_langgraph_node_chunk(chunk) -> Chunk:
         raise ValueError(f"Empty chunk: {chunk}")
     
     node_name, node_data = items[0]
-    logger.info(f"Processing node: {node_name}")
+    logger.debug(f"Processing node: {node_name}")
     
     # 处理 node_data
     if isinstance(node_data, dict):
