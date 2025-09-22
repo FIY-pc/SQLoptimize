@@ -330,7 +330,11 @@ async def test_database_connection(
     try:
         db_repo = DatabaseConnectionRepository()
         db_connection = db_repo.get_by_id(connection_id)
-
+        if not db_connection:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="数据库连接不存在"
+            )
         db_registry = DatabaseRegistry(db_connection.database_uri)
         
         with db_registry.session() as db:
