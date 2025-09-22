@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, EmailStr, Field
 from src.api.repository import UserRepository
 from src.api.utils import jwt_manager, password_manager, get_current_user
-from src.api.database import get_db_context
+from src.api.service_db import get_service_db
 import logging
 
 logger = logging.getLogger(__name__)
@@ -48,44 +48,43 @@ class UserInfo(BaseModel):
 async def register(request: RegisterRequest):
     """用户注册"""
     try:
-        with get_db_context() as db:
-            user_repo = UserRepository(db)
-            
-            # 检查邮箱是否已存在
-            if user_repo.exists_by_email(request.email):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="邮箱已被注册"
-                )
-            
-            # 检查用户名是否已存在
-            if user_repo.exists_by_name(request.name):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="用户名已被使用"
-                )
-            
-            # 创建用户
-            user_data = {
-                "name": request.name,
-                "email": request.email,
-                "password": password_manager.hash_password(request.password)
-            }
-            
-            user = user_repo.create(user_data)
-            
-            # 生成令牌
-            access_token = jwt_manager.create_access_token(str(user.id), user.email)
-            refresh_token = jwt_manager.create_refresh_token(str(user.id), user.email)
-            
-            user_email = user.email
-            response = LoginResponse(
-                access_token=access_token,
-                refresh_token=refresh_token,
-                user_id=user.id,
-                user_name=user.name
+        user_repo = UserRepository()
+        
+        # 检查邮箱是否已存在
+        if user_repo.exists_by_email(request.email):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="邮箱已被注册"
             )
         
+        # 检查用户名是否已存在
+        if user_repo.exists_by_name(request.name):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="用户名已被使用"
+            )
+        
+        # 创建用户
+        user_data = {
+            "name": request.name,
+            "email": request.email,
+            "password": password_manager.hash_password(request.password)
+        }
+        
+        user = user_repo.create(user_data)
+        
+        # 生成令牌
+        access_token = jwt_manager.create_access_token(str(user.id), user.email)
+        refresh_token = jwt_manager.create_refresh_token(str(user.id), user.email)
+        
+        user_email = user.email
+        response = LoginResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            user_id=user.id,
+            user_name=user.name
+        )
+    
         logger.info(f"用户注册成功: {user_email}")
         return response
         
@@ -102,38 +101,37 @@ async def register(request: RegisterRequest):
 async def login(request: LoginRequest):
     """用户登录"""
     try:
-        with get_db_context() as db:
-            user_repo = UserRepository(db)
+        user_repo = UserRepository()
             
-            # 验证用户凭据
-            user = user_repo.get_by_email(request.email)
-            if not user:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="用户不存在",
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
-            
-            # 验证密码
-            if not password_manager.verify_password(request.password, user.password):
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="密码错误",
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
-
-            # 生成令牌
-            access_token = jwt_manager.create_access_token(str(user.id), user.email)
-            refresh_token = jwt_manager.create_refresh_token(str(user.id), user.email)
-            
-            # 提取用户数据
-            user_email = user.email
-            response = LoginResponse(
-                access_token=access_token,
-                refresh_token=refresh_token,
-                user_id=user.id,
-                user_name=user.name
+        # 验证用户凭据
+        user = user_repo.get_by_email(request.email)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="用户不存在",
+                headers={"WWW-Authenticate": "Bearer"},
             )
+        
+        # 验证密码
+        if not password_manager.verify_password(request.password, user.password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="密码错误",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # 生成令牌
+        access_token = jwt_manager.create_access_token(str(user.id), user.email)
+        refresh_token = jwt_manager.create_refresh_token(str(user.id), user.email)
+        
+        # 提取用户数据
+        user_email = user.email
+        response = LoginResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            user_id=user.id,
+            user_name=user.name
+        )
 
         logger.info(f"用户登录成功: {user_email}")
         
@@ -170,22 +168,21 @@ async def refresh_token(request: RefreshTokenRequest):
             )
         
         # 验证用户是否存在
-        with get_db_context() as db:
-            user_repo = UserRepository(db)
-            user = user_repo.get_by_id(int(user_id))
-            if user is None:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="用户不存在",
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
-            
-            # 生成新的访问令牌
-            access_token = jwt_manager.create_access_token(str(user.id), user.email)
-            
-            # 提取用户数据
-            user_email = user.email
-            response = RefreshTokenResponse(access_token=access_token)
+        user_repo = UserRepository()
+        user = user_repo.get_by_id(int(user_id))
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="用户不存在",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # 生成新的访问令牌
+        access_token = jwt_manager.create_access_token(str(user.id), user.email)
+        
+        # 提取用户数据
+        user_email = user.email
+        response = RefreshTokenResponse(access_token=access_token)
         
         logger.info(f"令牌刷新成功: {user_email}")
         
@@ -211,26 +208,25 @@ async def change_password(
 ):
     """修改密码"""
     try:
-        with get_db_context() as db:
-            user_repo = UserRepository(db)
-            user = user_repo.get_by_id(current_user["id"])
-            
-            if not user:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="用户不存在"
-                )
-            
-            # 验证旧密码
-            if not password_manager.verify_password(request.old_password, user.password):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="原密码错误"
-                )
-            
-            # 更新密码
-            hashed_new_password = password_manager.hash_password(request.new_password)
-            user_repo.update(current_user["id"], {"password": hashed_new_password})
+        user_repo = UserRepository()
+        user = user_repo.get_by_id(current_user["id"])
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="用户不存在"
+            )
+        
+        # 验证旧密码
+        if not password_manager.verify_password(request.old_password, user.password):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="原密码错误"
+            )
+        
+        # 更新密码
+        hashed_new_password = password_manager.hash_password(request.new_password)
+        user_repo.update(current_user["id"], {"password": hashed_new_password})
         
         logger.info(f"用户修改密码成功: {current_user['email']}")
         return {"message": "密码修改成功"}

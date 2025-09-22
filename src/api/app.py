@@ -1,7 +1,13 @@
 from fastapi import FastAPI
 from src.api.middleware import add_middleware
 from src.api.router import ai_router, auth_router, model_router, database_router
-from src.api.database import ensure_db_setup, create_tables
+from src.api.service_db import configure_service_db, migrate_service_db
+from src.models.base import Base
+from src.config import get_settings
+
+
+settings = get_settings()
+
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -21,8 +27,9 @@ app = FastAPI(
 add_middleware(app)
 
 logger.info("Database setup start")
-ensure_db_setup()
-create_tables()
+configure_service_db(settings.service_db_url)
+migrate_service_db(Base)
+
 logger.info("Database setup complete")
 
 app.include_router(ai_router)

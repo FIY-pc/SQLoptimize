@@ -15,6 +15,7 @@ class Settings:
     base_url: str
     model: str
     db_path: Optional[str]
+    service_db_url: str
     request_timeout: int = 60  # 秒
     z3_jar_path: str = "./src/sql_equality/lib/sqlsolver-v1.1.0.jar"
     
@@ -30,6 +31,7 @@ class Settings:
         base_url = os.getenv("OPENAI_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1").strip()
         model = os.getenv("MODEL", "qwen-plus").strip()
         db_path = os.getenv("DB_PATH", "").strip() or "./data/app.db"
+        service_db_url = os.getenv("SERVICE_DB_URL", "").strip()
         z3_jar_path = os.getenv("Z3_JAR_PATH", "").strip()
         
         # JWT配置
@@ -43,6 +45,7 @@ class Settings:
             base_url=base_url,
             model=model,
             db_path=db_path,
+            service_db_url=service_db_url,
             z3_jar_path=z3_jar_path,
             jwt_secret_key=jwt_secret_key,
             jwt_algorithm=jwt_algorithm,

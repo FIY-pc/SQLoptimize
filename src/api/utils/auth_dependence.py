@@ -2,7 +2,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from src.api.utils import jwt_manager
 from src.api.repository import UserRepository
-from src.api.database import get_db_context
+from src.api.service_db import get_service_db
 
 security = HTTPBearer()
 
@@ -28,20 +28,19 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         )
     
     # 从数据库获取用户信息
-    with get_db_context() as db:
-        user_repo = UserRepository(db)
-        user = user_repo.get_by_id(int(user_id))
-        if user is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="用户不存在",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        
-        # 提取用户数据，避免会话依赖
-        user_id = user.id
-        user_name = user.name
-        user_email = user.email
+    user_repo = UserRepository()
+    user = user_repo.get_by_id(int(user_id))
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="用户不存在",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # 提取用户数据，避免会话依赖
+    user_id = user.id
+    user_name = user.name
+    user_email = user.email
     
     return {
         "id": user_id,
