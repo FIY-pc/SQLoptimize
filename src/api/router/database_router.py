@@ -336,7 +336,13 @@ async def test_database_connection(
                 detail="数据库连接不存在"
             )
         db_registry = DatabaseRegistry(db_connection.database_uri)
-        
+        # 检查数据库是否属于当前用户
+        if db_connection.user_id != current_user["id"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="无权测试此数据库连接"
+            )
+
         with db_registry.session() as db:
             start_time = time.time()
             result = db.execute(text("SELECT 1")) # 测试连接
