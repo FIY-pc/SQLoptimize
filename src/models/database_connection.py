@@ -10,12 +10,12 @@ class DatabaseConnection(Base):
     """
     __tablename__ = "database_connections"
     id = Column(Integer, primary_key=True, index=True)
-    database_name = Column(String, unique=True, index=True) # 用户自定义的数据库名称
+    database_name = Column(String(100), unique=True, index=True) # 用户自定义的数据库名称
 
-    database_uri = Column(String) # 数据库 URI
+    database_uri = Column(String(500)) # 数据库 URI
     
-    database_type = Column(String)              # 数据库类型
-    database_description = Column(String, default="") # 数据库描述
+    database_type = Column(String(50))              # 数据库类型
+    database_description = Column(String(500), default="") # 数据库描述
     
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

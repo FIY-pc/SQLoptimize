@@ -4,8 +4,11 @@ from typing import List, Optional
 from src.api.repository import DatabaseConnectionRepository
 from src.api.service_db import get_service_db
 from src.api.utils import get_current_user
+from src.db.registry import DatabaseRegistry
+from sqlalchemy import text
 import logging
-
+import time
+    
 logger = logging.getLogger(__name__)
 
 database_router = APIRouter(
@@ -327,11 +330,19 @@ async def test_database_connection(
     try:
         db_repo = DatabaseConnectionRepository()
         db_connection = db_repo.get_by_id(connection_id)
-        result = db_connection.ping()
+
+        db_registry = DatabaseRegistry(db_connection.database_uri)
+        
+        with db_registry.session() as db:
+            start_time = time.time()
+            result = db.execute(text("SELECT 1")) # 测试连接
+            logger.info(f"查询结果: {result.fetchone()}")
+            response_time = time.time() - start_time
+            logger.info(f"数据库连接测试成功，用户ID: {current_user['id']}, 连接ID: {connection_id}, 响应时间: {response_time}")
         return DatabaseConnectionTestResponse(
-            message=result.message, 
-            status=result.status, 
-            response_time=result.response_time
+            message="数据库连接测试成功", 
+            status="success", 
+            response_time=response_time
         )
     except Exception as e:
         logger.error(f"测试数据库连接失败: {e}")

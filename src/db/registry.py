@@ -34,10 +34,7 @@ class DatabaseRegistry:
         """Get database URL, with fallback to default SQLite."""
         if self._database_url:
             return self._database_url
-        
-        # Fallback to default SQLite
-        from src.config import settings
-        return f"sqlite:///{os.path.join(settings.db_path, 'sqlite.db')}"
+        raise ValueError("Database URL is not set")
     
     def _detect_database_type(self, url: str) -> str:
         """Detect database type from URL."""
@@ -146,6 +143,12 @@ class DatabaseRegistry:
         database_url = self._get_database_url()
         db_type = self._detect_database_type(database_url)
         engine_config = self._get_engine_config(db_type, is_async=False)
+        
+
+        if db_type == 'mysql' and not database_url.startswith('mysql+pymysql'):
+            database_url = database_url.replace('mysql://', 'mysql+pymysql://')
+        elif db_type == 'postgresql' and not database_url.startswith('postgresql+psycopg2'):
+            database_url = database_url.replace('postgresql://', 'postgresql+psycopg2://')
         
         self.logger.info(f"Creating {db_type} engine: {database_url}")
 

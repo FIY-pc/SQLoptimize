@@ -7,9 +7,9 @@ class User(Base):
     """用户信息"""
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    email = Column(String, unique=True, index=True)
-    password = Column(String)
+    name = Column(String(100), index=True)
+    email = Column(String(255), unique=True, index=True)
+    password = Column(String(255))
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
