@@ -151,28 +151,6 @@ class DatabaseConnectionRepository:
         except Exception as e:
             logger.error(f"根据用户ID和数据库类型获取数据库连接列表失败: {e}")
             raise
-    
-    def get_by_database_type(self, database_type: str) -> List[DatabaseConnection]:
-        """根据数据库类型获取数据库连接列表"""
-        try:
-            with get_service_db() as db:
-                connections = db.query(DatabaseConnection).filter(DatabaseConnection.database_type == database_type).all()
-                return connections
-        except Exception as e:
-            logger.error(f"根据数据库类型获取数据库连接列表失败: {e}")
-            raise
-    
-    def get_by_user_and_type(self, user_id: int, database_type: str) -> List[DatabaseConnection]:
-        """根据用户ID和数据库类型获取数据库连接列表"""
-        try:
-            with get_service_db() as db:
-                connections = db.query(DatabaseConnection).filter(
-                    and_(DatabaseConnection.user_id == user_id, DatabaseConnection.database_type == database_type)
-                ).all()
-                return connections
-        except Exception as e:
-            logger.error(f"根据用户ID和数据库类型获取数据库连接列表失败: {e}")
-            raise
 
     def get_active_by_user_id(self, user_id: int) -> ActiveDatabaseConnection:
         """根据用户ID获取活跃数据库连接"""
