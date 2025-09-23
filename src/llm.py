@@ -66,6 +66,7 @@ class LLMClient:
         max_tokens: Optional[int] = None,
         state: Optional[State] = None,
     ) -> str:
+        """异步调用 LLM"""
         settings = get_settings()
         if not settings.api_key or settings.api_key == "EMPTY_KEY":
             raise RuntimeError("OPENAI_API_KEY 未设置，请先在环境变量或 .env 中配置。")
@@ -73,7 +74,7 @@ class LLMClient:
         stream_writer = state.get("stream_writer") if state is not None else None
 
         try:
-            resp = self._client_async.chat.completions.create(
+            resp = await self._client_async.chat.completions.create(
                 model=self._model,
                 messages=messages,
                 temperature=temperature,
@@ -84,7 +85,7 @@ class LLMClient:
             raise RuntimeError(f"调用 LLM 出错：{e}") from e
         if stream_writer:
             content = ""
-            for chunk in resp:
+            async for chunk in resp:
                 delta = chunk.choices[0].delta.content if chunk.choices else ""
                 if delta:
                     content += delta

@@ -1,3 +1,5 @@
+"""异步工作流构建，为 API 服务提供支持，若是维护有困难，可通知后端进行同步（当然能顺便同步最好了）"""
+
 from typing import Callable
 
 from langgraph.graph import StateGraph, START, END

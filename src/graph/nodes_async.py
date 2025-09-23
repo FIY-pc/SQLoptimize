@@ -1,3 +1,7 @@
+"""异步节点实现，为 API 服务提供支持，若是维护有困难，可通知后端进行同步（当然能顺便同步最好了）"""
+
+from typing import Dict, Any
+
 import re
 import sqlite3
 import json
@@ -77,7 +81,7 @@ async def optimize_node_async(state: State) -> State:
         })
 
     llm = get_llm()
-    content = await llm.chat(messages, state=state)
+    content = await llm.chat_async(messages, state=state)
     optimized_sql = _extract_sql_from_text(content)
     state["optimized_sql"] = optimized_sql
     state["history"].append("[optimize] 已生成优化 SQL")
@@ -142,7 +146,7 @@ async def plan_check_node_async(state: State) -> State:
     # 后续把 prompt_user 传给 LLM
     try:
         llm = get_llm()
-        content = await llm.chat([
+        content = await llm.chat_async([
             {"role": "system", "content": prompt_system},
             {"role": "user", "content": prompt_user},
         ], temperature=0.1, state=state)
@@ -153,7 +157,7 @@ async def plan_check_node_async(state: State) -> State:
         state["history"].append("[plan] 静态分析失败")
     
     # 使用 z3 验证 SQL 的等价性
-    z3_jar_path = settings.z3_jar_path
+    z3_jar_path = settings.z3_lib_path
     db_schema = state.get("db_schema")
     if not db_schema:
         state["history"].append("[plan] 缺少数据库 schema，跳过 z3 等价性验证")

@@ -34,26 +34,7 @@ class OptimizeResponse(BaseModel):
     z3_result: List[str] = Field(default=[], description="Z3 验证结果")
     history: List[str] = Field(default=[], description="历史轨迹")
     timestamp: int = Field(default=0, description="时间戳")
-
-# 流式输出的响应模型，只包含必要字段
-class NodeChunk(BaseModel):
-    type: str = Field(default="data", description="类型")
-    node_name: str = Field(default="", description="节点名称")
-    input_sql: str = Field(default="", description="输入 SQL")
-    optimized_sql: str = Field(default="", description="优化后 SQL")    
-    plan_feedback: str = Field(default="", description="执行计划或静态分析反馈")    
-    db_schema: str = Field(default="", description="数据库 schema")
-    z3_result: List[str] = Field(default=[], description="Z3 验证结果")
-    history: List[str] = Field(default=[], description="历史轨迹")
-
-class ErrorChunk(BaseModel):
-    error: str = Field(default="", description="错误信息")
-
-class Chunk(BaseModel):
-    type: Literal["node_chunk", "llm_chunk", "error_chunk"] = Field(default="node_chunk", description="类型")
-    data: Union[NodeChunk, str, ErrorChunk] = Field(..., description="数据")
-    timestamp: int = Field(default=0, description="时间戳")
-
+    
 """路由handler"""
 
 @ai_router.post("/optimize",summary="调用agent优化SQL")
