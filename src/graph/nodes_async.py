@@ -3,9 +3,9 @@ import sqlite3
 import json
 
 from .state import State
-from .llm import get_llm
-from .sql_equality.test import verify_sql_equivalence
-from .config import get_settings
+from src.llm import get_llm
+from src.sql_equality.test import verify_sql_equivalence
+from src.config import get_settings
 
 
 def _ensure_history(state: State) -> None:
@@ -13,7 +13,7 @@ def _ensure_history(state: State) -> None:
         state["history"] = []
 
 
-async def input_node(state: State) -> State:
+async def input_node_async(state: State) -> State:
     """输入节点：确保状态初始化并记录输入。"""
     _ensure_history(state)
     sql = state.get("input_sql", "").strip()
@@ -39,7 +39,7 @@ def _extract_sql_from_text(text: str) -> str:
     return text.strip()
 
 
-async def optimize_node(state: State) -> State:
+async def optimize_node_async(state: State) -> State:
     """优化节点：调用 LLM（qwen-plus）对 SQL 进行改写优化。"""
     _ensure_history(state)
     input_sql = state.get("input_sql", "").strip()
@@ -84,7 +84,7 @@ async def optimize_node(state: State) -> State:
     return state
 
 
-async def plan_check_node(state: State) -> State:
+async def plan_check_node_async(state: State) -> State:
     """执行计划检查节点：
     - 若设置 DB_PATH 且可访问，使用 SQLite 的 EXPLAIN QUERY PLAN 获取计划反馈；
     - 否则使用 LLM 对 SQL 进行静态分析，给出潜在问题与建议。
@@ -173,7 +173,7 @@ async def plan_check_node(state: State) -> State:
     return state
 
 
-async def output_node(state: State) -> State:
+async def output_node_async(state: State) -> State:
     """输出节点：整理最终输出并记录。"""
     _ensure_history(state)
     has_opt = bool(state.get("optimized_sql"))

@@ -1,10 +1,9 @@
 import json
 from pathlib import Path
-from typing import Optional, Any, Sequence
+from typing import Optional
 from src.stream.stream_writer import StreamWriter
-import logging
-from .state import State
-from .graph import build_graph
+from src.graph.state import State
+from src.graph.graph_async import build_async_graph
 
 # 构建初始状态，从项目根目录读取 rules.json
 def build_init_state(
@@ -47,16 +46,16 @@ def build_init_state(
         init_state["history"].append(f"[main] 读取 rules.json 失败：{e}")
     return init_state
 
-# 供 CLI 用的执行函数，同步版本
+# 供 CLI 用的执行函数
 async def execute_pipeline_cli(sql: str, db_schema: Optional[str] = None) -> State:
-    app = build_graph()
+    app = build_async_graph()
     init_state = build_init_state(sql=sql, db_schema=db_schema)
     final_state: State = await app.ainvoke(init_state)  # type: ignore
     return final_state
 
-# 供 API 用的执行函数，异步版本
+# 供 API 用的执行函数
 async def execute_pipeline_api(sql: str, db_schema: Optional[str] = None) -> State:
-    app = build_graph()
+    app = build_async_graph()
     init_state = build_init_state(sql=sql, db_schema=db_schema)
     final_state: State = await app.ainvoke(init_state)  # type: ignore
     return final_state
@@ -67,7 +66,7 @@ async def execute_pipeline_stream(
     stream_writer: Optional[StreamWriter] = None,
     db_schema: Optional[str] = None
 ):
-    app = build_graph()
+    app = build_async_graph()
     init_state = build_init_state(
         sql=sql, 
         stream_writer=stream_writer,
