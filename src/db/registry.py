@@ -1,9 +1,9 @@
 import os
 from contextlib import asynccontextmanager, contextmanager
-from typing import Any, AsyncGenerator, Generator, Optional
+from typing import AsyncGenerator, Generator, Optional
 from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 from urllib.parse import urlparse
 import logging
 
@@ -22,6 +22,7 @@ class DatabaseRegistry:
     """Simplified registry for database connections and sessions."""
 
     def __init__(self, database_url: Optional[str] = None):
+        self.database_type = None
         self._database_url = database_url
         self._engine: Engine = None
         self._async_engine: AsyncEngine = None
@@ -42,12 +43,16 @@ class DatabaseRegistry:
         scheme = parsed.scheme.lower()
         
         if scheme.startswith('sqlite'):
+            self.database_type = 'sqlite'
             return 'sqlite'
         elif scheme.startswith('postgresql'):
+            self.database_type = 'postgresql'
             return 'postgresql'
         elif scheme.startswith('mysql'):
+            self.database_type = 'mysql'
             return 'mysql'
         else:
+            self.database_type = 'unknown'
             return 'unknown'
     
     def _get_engine_config(self, db_type: str, is_async: bool) -> dict:
@@ -176,8 +181,11 @@ class DatabaseRegistry:
             database_url = database_url.replace('sqlite://', 'sqlite+aiosqlite://')
         elif db_type == 'postgresql' and not database_url.startswith('postgresql+asyncpg'):
             database_url = database_url.replace('postgresql://', 'postgresql+asyncpg://')
-        elif db_type == 'mysql' and not database_url.startswith('mysql+aiomysql'):
-            database_url = database_url.replace('mysql://', 'mysql+aiomysql://')
+        elif db_type == 'mysql':
+            if 'mysql+pymysql' in database_url:
+                database_url = database_url.replace('mysql+pymysql', 'mysql+aiomysql')
+            elif database_url.startswith('mysql://'):
+                database_url = database_url.replace('mysql://', 'mysql+aiomysql://')
         
         self.logger.info(f"Creating async {db_type} engine: {database_url}")
         
@@ -194,7 +202,7 @@ class DatabaseRegistry:
 
 
     @contextmanager
-    def session(self) -> Generator[Any, None, None]:
+    def session(self) -> Generator[Session, None, None]:
         """Context manager for database sessions."""
         self.initialize_sync()
         if not self._session_factory:
