@@ -237,10 +237,11 @@ class StatisticsCollector:
         self.analyzer = SQLAnalyzer()
         self.mysql_utils = MySQLUtils(database_url)
     
-    def create_from_settings(self):
+    @classmethod
+    def create_from_settings(cls):
         settings = get_settings()
         database_url = f"mysql+pymysql://{settings.mysql_user}:{settings.mysql_password or ''}@{settings.mysql_host}:{settings.mysql_port}/{settings.mysql_database or ''}"
-        return self(database_url)
+        return cls(database_url)
 
     def collect_table_statistics(self, sql: str, database: Optional[str] = None) -> Dict[str, Any]:
         """收集SQL涉及表的统计信息"""
