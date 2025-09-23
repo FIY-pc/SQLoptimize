@@ -10,7 +10,8 @@ import { cn } from "@/lib/utils";
 import icon from "@/public/favicon/icon.svg";
 import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
-import { ModelPicker, type ModelPickerProps } from "./ModelPicker";
+import { ModelPicker } from "./ModelPicker";
+import { DatabasePicker } from "./DatabasePicker";
 import { Thread } from "@/components/assistant-ui/thread";
 import { ThreadList } from "@/components/assistant-ui/thread-list";
 
@@ -74,17 +75,13 @@ const LeftBarSheet: FC = () => {
   );
 };
 
-type HeaderProps = {
-  model?: string;
-  onModelChange?: (v: string) => void;
-};
-
-const Header: FC<HeaderProps> = ({ model, onModelChange }) => {
+const Header: FC = () => {
   return (
     <header className="flex w-full items-center justify-between gap-2">
       <div className="flex items-center gap-2">
         <LeftBarSheet />
-        <ModelPicker value={model} onChange={onModelChange} />
+        <ModelPicker />
+        <DatabasePicker />
       </div>
       <ButtonWithTooltip
         variant="outline"
@@ -99,10 +96,10 @@ const Header: FC<HeaderProps> = ({ model, onModelChange }) => {
   );
 };
 
-export const Shadcn: FC<{ model?: string; onModelChange?: (v: string) => void }> = ({ model, onModelChange }) => {
+export const Shadcn: FC = () => {
   const sideStyle = "bg-muted/40 px-3 py-2";
   const topStyle = "border-b";
   const leftStyle = "border-r hidden md:block";
 
-  return <Header model={model} onModelChange={onModelChange} />;
+  return <Header />;
 };
