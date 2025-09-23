@@ -37,6 +37,16 @@ class DatabaseRegistry:
             return self._database_url
         raise ValueError("Database URL is not set")
     
+    def _ensure_sqlite_directory(self, database_url: str) -> str:
+        """Ensure SQLite database directory exists."""
+        if database_url.startswith('sqlite:///'):
+            db_path = database_url[10:]  # Remove 'sqlite:///' prefix
+            db_dir = os.path.dirname(db_path)
+            if db_dir and not os.path.exists(db_dir):
+                os.makedirs(db_dir, exist_ok=True)
+                self.logger.info(f"Created SQLite directory: {db_dir}")
+        return database_url
+    
     def _detect_database_type(self, url: str) -> str:
         """Detect database type from URL."""
         parsed = urlparse(url)
@@ -146,6 +156,7 @@ class DatabaseRegistry:
         from src.models.base import Base
         
         database_url = self._get_database_url()
+        database_url = self._ensure_sqlite_directory(database_url)
         db_type = self._detect_database_type(database_url)
         engine_config = self._get_engine_config(db_type, is_async=False)
         
@@ -173,6 +184,7 @@ class DatabaseRegistry:
             return
         
         database_url = self._get_database_url()
+        database_url = self._ensure_sqlite_directory(database_url)
         db_type = self._detect_database_type(database_url)
         engine_config = self._get_engine_config(db_type, is_async=True)
         
