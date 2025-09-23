@@ -95,7 +95,7 @@
 
 **推荐使用的模块：**
 1. **`utils/mysql_utils.py`** - 用于数据库分析和执行计划获取
-2. **`stream/stream_writer.py`** - 用于流式输出结果
+2. **`stream/stream_writer.py`** - 用于流式输出结果，可以在build_init_state的时候传入，然后在节点里获取并写入
 3. **`graph/state.py`** - 用于状态管理
 4. **`config.py`** - 用于配置获取
 5. **`llm.py`** - 用于LLM调用
