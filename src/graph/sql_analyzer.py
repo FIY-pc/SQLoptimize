@@ -39,10 +39,10 @@ class SQLAnalysisResult:
     query_type: str  # SELECT, INSERT, UPDATE, DELETE
 
 
-class SQLAnalyzer(MySQLUtils):
+class SQLAnalyzer():
     """SQL分析器"""
 
-    def __init__(self,database_url):
+    def __init__(self):
         self.table_pattern = re.compile(
             r'\b(?:FROM|JOIN|UPDATE|INTO)\s+(?:(?P<db>\w+)\.)?(?P<table>\w+)(?:\s+(?:AS\s+)?(?P<alias>\w+))?\b',
             re.IGNORECASE
@@ -233,9 +233,14 @@ class SQLAnalyzer(MySQLUtils):
 class StatisticsCollector:
     """统计信息收集器"""
 
-    def __init__(self):
+    def __init__(self,database_url:str):
         self.analyzer = SQLAnalyzer()
-        self.mysql_utils = MySQLUtils()
+        self.mysql_utils = MySQLUtils(database_url)
+    
+    def create_from_settings(self):
+        settings = get_settings()
+        database_url = f"mysql+pymysql://{settings.mysql_user}:{settings.mysql_password or ''}@{settings.mysql_host}:{settings.mysql_port}/{settings.mysql_database or ''}"
+        return self(database_url)
 
     def collect_table_statistics(self, sql: str, database: Optional[str] = None) -> Dict[str, Any]:
         """收集SQL涉及表的统计信息"""
@@ -390,7 +395,7 @@ def format_statistics_for_llm(statistics: Dict[str, Any]) -> str:
 def analyze_sql_with_statistics(sql: str, database: Optional[str] = None) -> Tuple[SQLAnalysisResult, Dict[str, Any]]:
     """分析SQL并收集统计信息"""
     analyzer = SQLAnalyzer()
-    collector = StatisticsCollector()
+    collector = StatisticsCollector.create_from_settings()
 
     # SQL分析
     analysis = analyzer.analyze_sql(sql)
