@@ -25,7 +25,7 @@ class Settings:
     # SQL等价性校验相关配置
     z3_lib_path: str = "./src/sql_equality/lib"
     sqlsolver_jar_path: str = "./src/sql_equality/lib/sqlsolver-v1.1.0.jar"
-    java_17_path: Optional[str]
+    java_17_path: Optional[str] = ""
     
     # JWT认证相关配置
     jwt_secret_key: str = "INSECURE-DEFAULT-DO-NOT-USE"
@@ -34,11 +34,11 @@ class Settings:
     jwt_refresh_token_expire_days: int = 7
 
     # 测试用MySQL数据库连接配置
-    mysql_host: Optional[str]
-    mysql_port: int
-    mysql_user: Optional[str]
-    mysql_password: Optional[str]
-    mysql_database: Optional[str]
+    mysql_host: Optional[str] = ""
+    mysql_port: int = 3306
+    mysql_user: Optional[str] = ""
+    mysql_password: Optional[str] = ""
+    mysql_database: Optional[str] = ""
 
     @staticmethod
     def from_env() -> "Settings":
@@ -53,7 +53,7 @@ class Settings:
         z3_lib_path = os.getenv("Z3_LIB_PATH", "").strip()
         sqlsolver_jar_path = os.getenv("SQLSOLVER_JAR_PATH", "").strip()
         java_17_path = os.getenv("JAVA_17_PATH", "").strip()    
-        
+
         # JWT配置
         jwt_secret_key = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-this-in-production").strip()
         jwt_algorithm = os.getenv("JWT_ALGORITHM", "HS256").strip()
