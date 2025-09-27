@@ -4,6 +4,8 @@ from typing import Optional
 from src.stream.stream_writer import StreamWriter
 from src.graph.state import State
 from src.graph.graph_async import build_async_graph
+from src.graph_1.graph import build_sqlopt_graph
+from src.graph_1.state import build_initial_state as build_initial_state_graph1
 
 # 构建初始状态，从项目根目录读取 rules.json
 def build_init_state(
@@ -48,8 +50,8 @@ def build_init_state(
 
 # 供 CLI 用的执行函数
 async def execute_pipeline_cli(sql: str, db_schema: Optional[str] = None) -> State:
-    app = build_async_graph()
-    init_state = build_init_state(sql=sql, db_schema=db_schema)
+    app = build_sqlopt_graph()
+    init_state = build_initial_state_graph1(sql=sql, db_schema=db_schema)
     final_state: State = await app.ainvoke(init_state)  # type: ignore
     return final_state
 

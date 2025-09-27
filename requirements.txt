@@ -9,7 +9,8 @@ uvicorn[standard]>=0.30.0
 sqlalchemy>=2.0.37
 python-jose[cryptography] >= 3.4.0
 passlib[bcrypt] >= 1.7.4
-
+distro
+jiter
 PyMySQL>=1.1.0
 aiomysql>=0.2.0
 psycopg2-binary>=2.9.0

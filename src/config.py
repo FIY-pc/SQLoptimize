@@ -23,8 +23,8 @@ class Settings:
     request_timeout: int = 60  # 秒
 
     # SQL等价性校验相关配置
-    z3_lib_path: str = "./src/sql_equality/lib"
-    sqlsolver_jar_path: str = "./src/sql_equality/lib/sqlsolver-v1.1.0.jar"
+    z3_lib_path: str = ""
+    sqlsolver_jar_path: str = ""
     java_17_path: Optional[str] = ""
     
     # JWT认证相关配置
