@@ -4,6 +4,7 @@ from rich.console import Console
 from rich.panel import Panel
 from typing import Optional
 from src.pipelines import execute_pipeline_cli
+import sys
 
 console = Console()
 
@@ -55,9 +56,39 @@ def run(sql: str, db_schema: Optional[str] = None) -> None:
 
 def main():
     parser = argparse.ArgumentParser(description="SQL 优化与计划检查（基于 LangGraph 与 qwen-plus）")
-    parser.add_argument("sql", type=str, help="要优化的 SQL 语句（用引号括起来）")
-    parser.add_argument("--db_schema", type=str, required=False, default="", help="数据库 schema")
+    parser.add_argument("sql", type=str, nargs="?", default="", help="要优化的 SQL 语句（字符串，可选；若使用 --sql_file 则不必提供）")
+    parser.add_argument("--db_schema", type=str, required=False, default="", help="数据库 schema（字符串，可选）")
+    
+    #从文件读取 SQL 与 schema
+    parser.add_argument("--sql_file", type=str, required=False, default="", help="包含 SQL 的文件路径（UTF-8/UTF-8-SIG）")
+    parser.add_argument("--db_schema_file", type=str, required=False, default="", help="包含数据库 schema 的文件路径（UTF-8/UTF-8-SIG）")
     args = parser.parse_args()
+
+    # 若提供了 SQL 文件，则读取文件内容覆盖 sql
+    if args.sql_file:
+        try:
+            with open(args.sql_file, "r", encoding="utf-8-sig") as f:
+                file_sql = f.read().strip()
+            args.sql = file_sql
+        except Exception as e:
+            console.print(Panel.fit(f"读取 SQL 文件失败：{e}", title="错误", border_style="red"))
+            sys.exit(2)
+
+    # 若未提供字符串 sql，也未提供 sql_file，则报错退出
+    if not args.sql:
+        console.print(Panel.fit("请提供 SQL或使用 --sql_file 指定 SQL 文件", title="错误", border_style="red"))
+        sys.exit(2)
+
+    # 若未直接传入 db_schema，但提供了 schema 文件，则读取文件内容
+    if not args.db_schema and args.db_schema_file:
+        try:
+            with open(args.db_schema_file, "r", encoding="utf-8-sig") as f:
+                file_schema = f.read()
+            args.db_schema = file_schema
+        except Exception as e:
+            console.print(Panel.fit(f"读取 schema 文件失败：{e}", title="错误", border_style="red"))
+            sys.exit(2)
+
     run(args.sql, args.db_schema)
 
 

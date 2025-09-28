@@ -1,7 +1,7 @@
 from typing import List, Dict, Optional
 from openai import OpenAI, OpenAIError, AsyncOpenAI
 from .config import get_settings
-from src.graph.state import State
+from src.graph.state import SQLState as State
 from .schemas.stream_chunk import Chunk, LLMChunk
 from src.utils import get_unix_timestamp
 

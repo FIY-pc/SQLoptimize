@@ -2,10 +2,10 @@ from typing import Callable
 
 from langgraph.graph import StateGraph, START, END
 
-from src.graph_1.state import SQLState
-from src.graph_1.tools.db_tools import run_explain, fetch_db_stats, run_explain_cost
-from src.graph_1.tools.equiv import run_equivalence_checker
-from src.graph_1.agent.llm_nodes import optimize_sql_node, final_report_node
+from src.graph.state import SQLState
+from src.graph.tools.db_tools import run_explain, fetch_db_stats, run_explain_cost
+from src.graph.tools.equiv import run_equivalence_checker
+from src.graph.agent.llm_nodes import optimize_sql_node, final_report_node
 
 
 def input_node(state: SQLState) -> SQLState:

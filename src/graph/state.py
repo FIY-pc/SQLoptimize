@@ -1,27 +1,46 @@
-from typing import TypedDict, List, Optional, Dict, Any, Callable
-from src.stream.stream_writer import StreamWriter
+from typing import TypedDict, Optional, Dict, Any, List
 
-class State(TypedDict, total=False):
-    # 输入 SQL（用户传入）
-    input_sql: str
 
-    # 数据库 schema
+class SQLState(TypedDict, total=False):
+    # 输入与上下文
+    sql: str
     db_schema: Optional[str]
-
-    # z3 验证结果
-    z3_result: Optional[List[str]]
-
-    # LLM 生成的优化后 SQL
-    optimized_sql: Optional[str]
-
-    # 执行计划或静态分析反馈（字符串）
-    plan_feedback: Optional[str]
-
-    # 历史轨迹（每个节点可追加日志，便于调试与追溯）
     history: List[str]
 
-    # 自定义改写规则（直接传给 LLM），顶层建议是一个字典
-    rewrite_rules: Optional[dict]
+    # 查询计划、统计信息
+    plan: str
+    stats: Dict[str, Any]
 
-    # 流式输出 writer
-    stream_writer: Optional[StreamWriter]
+    # LLM 优化输出
+    optimized_sql: str
+
+    # 等价性校验
+    equivalence: bool
+
+    # 成本估算
+    cost_before: Optional[float]
+    cost_after: Optional[float]
+
+    # 重试控制
+    iteration_count: int
+    max_iterations: int
+
+
+def build_initial_state(
+    sql: str,
+    db_schema: Optional[str] = None,
+    max_iterations: int = 3
+) -> SQLState:
+    return {
+        "sql": sql,
+        "db_schema": db_schema,
+        "history": [],
+        "plan": "",
+        "stats": {},
+        "optimized_sql": "",
+        "equivalence": False,
+        "cost_before": None,
+        "cost_after": None,
+        "iteration_count": 0,
+        "max_iterations": max_iterations,
+    }

@@ -2,10 +2,9 @@ import json
 from pathlib import Path
 from typing import Optional
 from src.stream.stream_writer import StreamWriter
-from src.graph.state import State
-from src.graph.graph_async import build_async_graph
-from src.graph_1.graph import build_sqlopt_graph
-from src.graph_1.state import build_initial_state as build_initial_state_graph1
+from src.graph.graph import build_sqlopt_graph
+from src.graph.state import build_initial_state
+from src.graph.state import SQLState as State
 
 # 构建初始状态，从项目根目录读取 rules.json
 def build_init_state(
@@ -51,14 +50,14 @@ def build_init_state(
 # 供 CLI 用的执行函数
 async def execute_pipeline_cli(sql: str, db_schema: Optional[str] = None) -> State:
     app = build_sqlopt_graph()
-    init_state = build_initial_state_graph1(sql=sql, db_schema=db_schema)
+    init_state = build_initial_state(sql=sql, db_schema=db_schema)
     final_state: State = await app.ainvoke(init_state)  # type: ignore
     return final_state
 
 # 供 API 用的执行函数
 async def execute_pipeline_api(sql: str, db_schema: Optional[str] = None) -> State:
-    app = build_async_graph()
-    init_state = build_init_state(sql=sql, db_schema=db_schema)
+    app = build_sqlopt_graph()
+    init_state = build_initial_state(sql=sql, db_schema=db_schema)
     final_state: State = await app.ainvoke(init_state)  # type: ignore
     return final_state
 
@@ -68,8 +67,8 @@ async def execute_pipeline_stream(
     stream_writer: Optional[StreamWriter] = None,
     db_schema: Optional[str] = None
 ):
-    app = build_async_graph()
-    init_state = build_init_state(
+    app = build_sqlopt_graph()
+    init_state = build_initial_state(
         sql=sql, 
         stream_writer=stream_writer,
         db_schema=db_schema
