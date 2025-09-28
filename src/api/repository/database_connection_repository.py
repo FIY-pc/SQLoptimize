@@ -166,6 +166,16 @@ class DatabaseConnectionRepository:
             logger.error(f"根据用户ID和数据库类型获取数据库连接列表失败: {e}")
             raise
     
+    def count_by_user_id(self, user_id: int) -> int:
+        """根据用户ID统计数据库连接数量"""
+        try:
+            with get_service_db() as db:
+                count = db.query(DatabaseConnection).filter(DatabaseConnection.user_id == user_id).count()
+                return count
+        except Exception as e:
+            logger.error(f"统计用户数据库连接数量失败: {e}")
+            raise
+    
     def get_active_by_user_id(self, user_id: int, auto_set_first: bool = True) -> Optional[DatabaseConnection]:
         """根据用户ID获取活跃的数据库连接
         

@@ -165,6 +165,16 @@ class ModelConnectionRepository:
             logger.error(f"根据用户ID和模型类型获取模型连接列表失败: {e}")
             raise
     
+    def count_by_user_id(self, user_id: int) -> int:
+        """根据用户ID统计模型连接数量"""
+        try:
+            with get_service_db() as db:
+                count = db.query(ModelConnection).filter(ModelConnection.user_id == user_id).count()
+                return count
+        except Exception as e:
+            logger.error(f"统计用户模型连接数量失败: {e}")
+            raise
+    
     def get_active_by_user_id(self, user_id: int, auto_set_first: bool = True) -> Optional[ModelConnection]:
         """根据用户ID获取活跃的模型连接
         

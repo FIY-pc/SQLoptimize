@@ -156,6 +156,16 @@ class DbSchemaRepository:
             logger.error(f"根据用户ID和模式名称获取数据库模式失败: {e}")
             raise
     
+    def count_by_user_id(self, user_id: int) -> int:
+        """根据用户ID统计数据库模式数量"""
+        try:
+            with get_service_db() as db:
+                count = db.query(DbSchema).filter(DbSchema.user_id == user_id).count()
+                return count
+        except Exception as e:
+            logger.error(f"统计用户数据库模式数量失败: {e}")
+            raise
+    
     def get_active_by_user_id(self, user_id: int, auto_set_first: bool = True) -> Optional[DbSchema]:
         """根据用户ID获取活跃的数据库模式
         

@@ -176,8 +176,7 @@ async def get_user_models(
             ))
         
         # 获取总数（用于分页）
-        total_connections = model_repo.get_by_user_id(current_user["id"], 0, 1000)
-        total = len(total_connections)
+        total = model_repo.count_by_user_id(current_user["id"])
         
         # 获取当前用户活跃的模型连接ID
         active_connection = model_repo.get_active_by_user_id(current_user["id"], auto_set_first=True)

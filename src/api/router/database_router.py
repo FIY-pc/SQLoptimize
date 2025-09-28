@@ -181,8 +181,7 @@ async def get_user_databases(
             ))
         
         # 获取总数（用于分页）
-        total_connections = db_repo.get_by_user_id(current_user["id"], 0, 1000)
-        total = len(total_connections)
+        total = db_repo.count_by_user_id(current_user["id"])
         
         # 获取当前用户活跃的数据库连接ID
         active_connection = db_repo.get_active_by_user_id(current_user["id"], auto_set_first=True)

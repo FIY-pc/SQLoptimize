@@ -160,8 +160,7 @@ async def get_user_schemas(
             ))
         
         # 获取总数（用于分页）
-        total_schemas = schema_repo.get_by_user_id(current_user["id"], 0, 1000)
-        total = len(total_schemas)
+        total = schema_repo.count_by_user_id(current_user["id"])
         
         # 获取当前用户活跃的数据库模式ID
         active_schema = schema_repo.get_active_by_user_id(current_user["id"], auto_set_first=True)
