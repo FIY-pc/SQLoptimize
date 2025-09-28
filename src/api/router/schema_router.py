@@ -43,6 +43,7 @@ class DbSchemaListResponse(BaseModel):
     total: int = Field(..., description="总数")
     skip: int = Field(..., description="跳过数量")
     limit: int = Field(..., description="限制数量")
+    has_more: bool = Field(..., description="是否还有更多数据")
     active_schema_id: int = Field(0, description="当前用户活跃的数据库模式ID，0表示无活跃模式")
 
 class DbSchemaDeleteResponse(BaseModel):
@@ -162,6 +163,9 @@ async def get_user_schemas(
         # 获取总数（用于分页）
         total = schema_repo.count_by_user_id(current_user["id"])
         
+        # 计算是否还有更多数据
+        has_more = (skip + len(schema_responses)) < total
+        
         # 获取当前用户活跃的数据库模式ID
         active_schema = schema_repo.get_active_by_user_id(current_user["id"], auto_set_first=True)
         active_schema_id = active_schema.id if active_schema else 0
@@ -173,6 +177,7 @@ async def get_user_schemas(
             total=total,
             skip=skip,
             limit=limit,
+            has_more=has_more,
             active_schema_id=active_schema_id
         )
             
