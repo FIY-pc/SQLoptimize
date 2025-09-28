@@ -53,6 +53,7 @@ class ModelConnectionListResponse(BaseModel):
     total: int = Field(..., description="总数")
     skip: int = Field(..., description="跳过数量")
     limit: int = Field(..., description="限制数量")
+    active_connection_id: int = Field(0, description="当前用户活跃的模型连接ID，0表示无活跃连接")
 
 class ActiveModelConnectionResponse(BaseModel):
     """活跃模型连接响应"""
@@ -178,13 +179,18 @@ async def get_user_models(
         total_connections = model_repo.get_by_user_id(current_user["id"], 0, 1000)
         total = len(total_connections)
         
+        # 获取当前用户活跃的模型连接ID
+        active_connection = model_repo.get_active_by_user_id(current_user["id"], auto_set_first=True)
+        active_connection_id = active_connection.id if active_connection else 0
+        
         logger.info(f"获取用户模型连接列表成功，用户ID: {current_user['id']}, 数量: {len(model_responses)}")
         
         return ModelConnectionListResponse(
             models=model_responses,
             total=total,
             skip=skip,
-            limit=limit
+            limit=limit,
+            active_connection_id=active_connection_id
         )
             
     except Exception as e:

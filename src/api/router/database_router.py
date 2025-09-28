@@ -51,6 +51,7 @@ class DatabaseConnectionListResponse(BaseModel):
     total: int = Field(..., description="总数")
     skip: int = Field(..., description="跳过数量")
     limit: int = Field(..., description="限制数量")
+    active_connection_id: int = Field(0, description="当前用户活跃的数据库连接ID，0表示无活跃连接")
 
 class DatabaseConnectionTestResponse(BaseModel):
     """数据库连接测试响应"""
@@ -183,13 +184,18 @@ async def get_user_databases(
         total_connections = db_repo.get_by_user_id(current_user["id"], 0, 1000)
         total = len(total_connections)
         
+        # 获取当前用户活跃的数据库连接ID
+        active_connection = db_repo.get_active_by_user_id(current_user["id"], auto_set_first=True)
+        active_connection_id = active_connection.id if active_connection else 0
+        
         logger.info(f"获取用户数据库连接列表成功，用户ID: {current_user['id']}, 数量: {len(database_responses)}")
         
         return DatabaseConnectionListResponse(
             databases=database_responses,
             total=total,
             skip=skip,
-            limit=limit
+            limit=limit,
+            active_connection_id=active_connection_id
         )
             
     except Exception as e:

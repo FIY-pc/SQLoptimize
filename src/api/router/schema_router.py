@@ -43,6 +43,7 @@ class DbSchemaListResponse(BaseModel):
     total: int = Field(..., description="总数")
     skip: int = Field(..., description="跳过数量")
     limit: int = Field(..., description="限制数量")
+    active_schema_id: int = Field(0, description="当前用户活跃的数据库模式ID，0表示无活跃模式")
 
 class DbSchemaDeleteResponse(BaseModel):
     """数据库模式删除响应"""
@@ -162,13 +163,18 @@ async def get_user_schemas(
         total_schemas = schema_repo.get_by_user_id(current_user["id"], 0, 1000)
         total = len(total_schemas)
         
+        # 获取当前用户活跃的数据库模式ID
+        active_schema = schema_repo.get_active_by_user_id(current_user["id"], auto_set_first=True)
+        active_schema_id = active_schema.id if active_schema else 0
+        
         logger.info(f"获取用户数据库模式列表成功，用户ID: {current_user['id']}, 数量: {len(schema_responses)}")
         
         return DbSchemaListResponse(
             schemas=schema_responses,
             total=total,
             skip=skip,
-            limit=limit
+            limit=limit,
+            active_schema_id=active_schema_id
         )
             
     except Exception as e:
