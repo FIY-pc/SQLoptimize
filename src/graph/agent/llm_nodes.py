@@ -28,7 +28,7 @@ def optimize_sql_node(state: Dict[str, Any]) -> Dict[str, Any]:
     sql = (state.get("sql") or "").strip()
     plan = (state.get("plan") or "").strip()
     stats = state.get("stats") or {}
-
+    db_schema = (state.get("db_schema") or "").strip()
     messages = [
         {
             "role": "system",
@@ -37,6 +37,8 @@ def optimize_sql_node(state: Dict[str, Any]) -> Dict[str, Any]:
                 "- 必须依据提供的查询计划（EXPLAIN）与数据库统计信息（如表行数、索引、列选择性等）进行优化决策；若统计信息缺失或不完整，请进行保守改写。\n"
                 "- 优化目标：以降低 EXPLAIN JSON 中 query_block.cost_info.query_cost 为首要目标，且不改变结果集语义。\n"
                 "- 优化策略：优先考虑索引使用与覆盖、谓词下推、调整连接顺序（基数驱动）、去除冗余子句/子查询、避免函数使索引失效、减少不必要的 DISTINCT/ORDER BY/FILESORT/TEMPORARY。\n"
+                "- 兼容性要求：输出必须符合 Apache Calcite/ANSI SQL 标准，严禁使用方言特性（例如 MySQL 的反引号`、LIMIT、特定内置函数或 HINT）。\n"
+                "- 标识符要求：表名与列名必须与提供的 schema 完全一致（含大小写），不得虚构或遗漏；如需字符串处理，优先使用 ANSI 标准函数（如 SUBSTRING(col FROM start FOR length)、CAST/COALESCE/CASE WHEN）。\n"
                 "- 输出要求：仅输出最终 SQL，使用 ```sql 代码块包裹；不要输出其它解释。"
             ),
         },
@@ -44,12 +46,12 @@ def optimize_sql_node(state: Dict[str, Any]) -> Dict[str, Any]:
             "role": "user",
             "content": (
                 f"原始 SQL：\n```sql\n{sql}\n```\n\n"
+                f"数据库 schema（DDL）：\n```sql\n{db_schema}\n```\n\n"
                 f"查询计划：\n{plan}\n\n"
                 f"统计信息（JSON）：\n```json\n{stats}\n```"
             ),
         },
     ]
-
     llm = get_llm()
     content = llm.chat(messages)
     optimized_sql = _extract_sql_from_text(content)
