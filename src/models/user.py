@@ -13,8 +13,13 @@ class User(Base):
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
+    active_database_connections = Column(Integer, ForeignKey("database_connections.id"))
+    active_model_connections = Column(Integer, ForeignKey("model_connections.id"))
+    active_db_schemas = Column(Integer, ForeignKey("db_schemas.id"))
+
     # 关联模型连接，一对多
-    model_connections = relationship("ModelConnection", back_populates="user")
-    active_database_connections = relationship("ActiveDatabaseConnection", back_populates="user")
+    model_connections = relationship("ModelConnection", back_populates="user", foreign_keys="ModelConnection.user_id")
     # 关联数据库连接，一对多
-    database_connections = relationship("DatabaseConnection", back_populates="user")
+    database_connections = relationship("DatabaseConnection", back_populates="user", foreign_keys="DatabaseConnection.user_id")
+    # 关联数据库模式，一对多
+    db_schemas = relationship("DbSchema", back_populates="user", foreign_keys="DbSchema.user_id")
