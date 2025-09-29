@@ -92,3 +92,40 @@ temp/
 .pnp.loader.mjs
 .pnp.js
 .pnpm-store/
+
+# --- Databases / Local data ---
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# --- Python packaging / build metadata ---
+pip-wheel-metadata/
+*.whl
+*.manifest
+*.spec
+
+# --- Python tools (Poetry / Pipenv) ---
+poetry.lock
+Pipfile
+Pipfile.lock
+
+# --- Local tooling / histories ---
+.history/
+.VSCodeCounter/
+
+# --- Optional frontend build/test outputs ---
+coverage/
+storybook-static/
+
+# --- C extensions (if any compiled locally) ---
+*.so
+
+# --- Local runtime logs ---
+backend/*.log
+frontend/*.log
+
+# --- Misc cache ---
+.ruff_cache/
+.pytest_cache/
+
