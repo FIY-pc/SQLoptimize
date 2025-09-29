@@ -52,7 +52,7 @@ function getProviderModel(sel: { provider: string; name: string }) {
 
 export async function POST(req: Request) {
   const url = new URL(req.url);
-  const modelParam = url.searchParams.get("model") ?? "gpt-4o-mini";
+  const modelParam = url.searchParams.get("model") ?? "deepseek-r1";
   const sel = REGISTRY[modelParam];
 
   const { messages }: { messages: UIMessage[] } = await req.json();
@@ -81,5 +81,7 @@ export async function POST(req: Request) {
     messages: convertToModelMessages(messages),
   });
 
-  return result.toUIMessageStreamResponse();
+  const uiMessageStream = result.toUIMessageStreamResponse();
+  console.log("返回的流式响应：", uiMessageStream);
+  return uiMessageStream;
 }

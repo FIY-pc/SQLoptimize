@@ -24,11 +24,11 @@ import { PlusIcon, Trash2Icon } from "lucide-react";
 
 // 作为后备选项（当后端不可用或返回空时使用）
 const FALLBACK_MODELS = [
-  {
-    name: "GPT 4o-mini",
-    value: "gpt-4o-mini",
-    icon: openai,
-  },
+  // {
+  //   name: "GPT 4o-mini",
+  //   value: "gpt-4o-mini",
+  //   icon: openai,
+  // },
   {
     name: "Deepseek R1",
     value: "deepseek-r1",
