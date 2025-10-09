@@ -1,6 +1,15 @@
 from typing import TypedDict, Optional, Dict, Any, List
 
 
+class OptimizationPlan(TypedDict, total=False):
+    plan_id: str
+    description: str
+    optimized_sql: str
+    reasoning: str
+    equivalence: bool
+    cost: Optional[float]
+
+
 class SQLState(TypedDict, total=False):
     # 输入与上下文
     sql: str
@@ -11,19 +20,22 @@ class SQLState(TypedDict, total=False):
     plan: str
     stats: Dict[str, Any]
 
-    # LLM 优化输出
+    # 多方案优化
+    optimization_plans: List[OptimizationPlan]
+    current_plan_index: int
+    
     optimized_sql: str
-
-    # 等价性校验
+    rewrite_explanation: str
     equivalence: bool
-
-    # 成本估算
     cost_before: Optional[float]
     cost_after: Optional[float]
 
     # 重试控制
     iteration_count: int
     max_iterations: int
+    
+    # 最终报告
+    final_report: str
 
 
 def build_initial_state(
@@ -37,6 +49,8 @@ def build_initial_state(
         "history": [],
         "plan": "",
         "stats": {},
+        "optimization_plans": [],
+        "current_plan_index": -1,
         "optimized_sql": "",
         "equivalence": False,
         "cost_before": None,

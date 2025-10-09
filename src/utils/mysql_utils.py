@@ -122,6 +122,105 @@ class MySQLUtils(DatabaseRegistry):
                 indexes_result = session.execute(indexes_sql, {"db_name": db_name, "table_name": table_name}).fetchall()
                 statistics['indexes'] = [dict(row._mapping) for row in indexes_result]
 
+                # 4. 外键与约束信息（用于标识外键列）
+                key_usage_sql = text("""
+                    SELECT COLUMN_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME, CONSTRAINT_NAME
+                    FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+                    WHERE TABLE_SCHEMA = :db_name AND TABLE_NAME = :table_name
+                """)
+                key_usage_result = session.execute(key_usage_sql, {"db_name": db_name, "table_name": table_name}).fetchall()
+                key_usage_rows = [dict(row._mapping) for row in key_usage_result]
+
+                # 5. 组装列级统计（与用户示例字段一致）
+                #    - 主键：索引 INDEX_NAME='PRIMARY' 的列视为主键
+                #    - 外键：KEY_COLUMN_USAGE 中 REFERENCED_TABLE_NAME 非空的列视为外键
+                #    - 索引：STATISTICS 中存在记录的列视为有索引；优先展示 PRIMARY / UNIQUE，其次 NORMAL
+                pk_columns = set(
+                    row["COLUMN_NAME"] for row in statistics['indexes']
+                    if isinstance(row, dict) and str(row.get("INDEX_NAME", "")).upper() == "PRIMARY"
+                )
+                fk_columns = set(
+                    row["COLUMN_NAME"] for row in key_usage_rows
+                    if row.get("REFERENCED_TABLE_NAME")
+                )
+
+                # 为每个列找一个“代表性索引”（PRIMARY 优先，其次 UNIQUE，再普通）
+                # 构建 column -> [index rows]
+                from collections import defaultdict
+                col_to_indexes = defaultdict(list)
+                for row in statistics['indexes']:
+                    if isinstance(row, dict):
+                        col_to_indexes[row.get("COLUMN_NAME")].append(row)
+
+                def pick_representative_index(col_name: str) -> Optional[Dict[str, Any]]:
+                    idxs = col_to_indexes.get(col_name, [])
+                    if not idxs:
+                        return None
+                    # PRIMARY 优先
+                    for r in idxs:
+                        if str(r.get("INDEX_NAME", "")).upper() == "PRIMARY":
+                            return r
+                    # UNIQUE 次之（NON_UNIQUE == 0）
+                    for r in idxs:
+                        if int(r.get("NON_UNIQUE", 1)) == 0:
+                            return r
+                    # 其余任选第一个
+                    return idxs[0]
+
+                column_stats = []
+                for col in statistics['columns']:
+                    col_name = col.get("COLUMN_NAME")
+                    rep_idx = pick_representative_index(col_name)
+                    has_index = "Y" if rep_idx is not None else "N"
+                    index_name = (rep_idx.get("INDEX_NAME") if rep_idx else None)
+                    index_type = None
+                    seq_in_index = None
+                    if rep_idx:
+                        index_type = "UNIQUE" if int(rep_idx.get("NON_UNIQUE", 1)) == 0 else "NORMAL"
+                        seq_in_index = rep_idx.get("SEQ_IN_INDEX")
+                    
+                    # 添加列的统计信息：distinct值、最大值、最小值
+                    distinct_count = None
+                    min_value = None
+                    max_value = None
+                    try:
+                        safe_col_name = col_name.replace('`', '``')
+                        
+                        # 获取distinct值数量
+                        distinct_sql = text(f"SELECT COUNT(DISTINCT `{safe_col_name}`) FROM `{table_name}`")
+                        distinct_result = session.execute(distinct_sql).fetchone()
+                        distinct_count = distinct_result[0] if distinct_result else None
+                        
+                        # 获取最小值和最大值
+                        minmax_sql = text(f"SELECT MIN(`{safe_col_name}`), MAX(`{safe_col_name}`) FROM `{table_name}`")
+                        minmax_result = session.execute(minmax_sql).fetchone()
+                        if minmax_result:
+                            min_value = minmax_result[0]
+                            max_value = minmax_result[1]
+                    except Exception as e:
+                        logger.warning(f"获取列 {col_name} 的统计信息失败: {e}")
+
+                    # 对齐用户示例的字段命名
+                    column_stats.append({
+                        "TABLE_NAME": table_name,
+                        "COLUMN_NAME": col_name,
+                        "DATA_TYPE": col.get("DATA_TYPE"),
+                        "DATA_LENGTH": col.get("CHARACTER_MAXIMUM_LENGTH"),
+                        "NUMERIC_PRECISION": col.get("NUMERIC_PRECISION"),
+                        "NUMERIC_SCALE": col.get("NUMERIC_SCALE"),
+                        "IS_PRIMARY_KEY": "Y" if col_name in pk_columns else "N",
+                        "IS_FOREIGN_KEY": "Y" if col_name in fk_columns else "N",
+                        "HAS_INDEX": has_index,
+                        "INDEX_NAME": index_name,
+                        "INDEX_TYPE": index_type,
+                        "SEQ_IN_INDEX": seq_in_index,
+                        "DISTINCT_COUNT": distinct_count,
+                        "MIN_VALUE": min_value,
+                        "MAX_VALUE": max_value,
+                    })
+
+                statistics["column_stats"] = column_stats
+
                 return {
                     "success": True,
                     "table_name": table_name,

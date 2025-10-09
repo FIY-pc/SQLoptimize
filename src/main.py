@@ -27,6 +27,11 @@ def run(sql: str, db_schema: Optional[str] = None) -> None:
     stats_text = json.dumps(stats, ensure_ascii=False, indent=2, default=str)
     console.print(Panel.fit(stats_text, title="数据库统计信息", border_style="yellow"))
 
+    # 改写说明
+    rewrite_explanation = final_state.get("rewrite_explanation") or ""
+    if rewrite_explanation:
+        console.print(Panel.fit(rewrite_explanation, title="改写说明", border_style="white"))
+
     # 优化后 SQL
     optimized = final_state.get("optimized_sql") or "(未生成)"
     console.print(Panel.fit(optimized, title="优化后 SQL", border_style="green"))
