@@ -1,16 +1,17 @@
 from fastapi import FastAPI
 from src.api.middleware import add_middleware
-from src.api.router import ai_router, auth_router, model_router, database_router
+from src.api.router import ai_router, auth_router, model_router, database_router, schema_router
 from src.api.service_db import configure_service_db, migrate_service_db
 from src.models.base import Base
 from src.config import get_settings
+from src.utils.log_utils import set_log_level
 
 
 settings = get_settings()
 
 import logging
 
-logging.basicConfig(level=logging.INFO)
+set_log_level()
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,7 @@ app.include_router(ai_router)
 app.include_router(auth_router)
 app.include_router(model_router)
 app.include_router(database_router)
+app.include_router(schema_router)
 
 # 健康检查
 @app.get("/api/ping",summary="健康检查")

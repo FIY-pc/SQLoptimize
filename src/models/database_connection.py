@@ -22,21 +22,4 @@ class DatabaseConnection(Base):
     
     # 外键关联用户
     user_id = Column(Integer, ForeignKey("users.id"))
-    user = relationship("User", back_populates="database_connections")
-    active_database_connections = relationship("ActiveDatabaseConnection", back_populates="database_connection")
-
-
-class ActiveDatabaseConnection(Base):
-    """
-    活跃数据库连接信息
-    """
-    __tablename__ = "active_database_connections"
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    database_connection_id = Column(Integer, ForeignKey("database_connections.id"))
-    
-    user = relationship("User", back_populates="active_database_connections")
-    database_connection = relationship("DatabaseConnection", back_populates="active_database_connections")
-
-    created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    user = relationship("User", back_populates="database_connections", foreign_keys=[user_id])

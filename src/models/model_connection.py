@@ -24,4 +24,4 @@ class ModelConnection(Base):
 
     # 外键关联用户
     user_id = Column(Integer, ForeignKey("users.id"))
-    user = relationship("User", back_populates="model_connections")
+    user = relationship("User", back_populates="model_connections", foreign_keys=[user_id])

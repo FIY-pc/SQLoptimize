@@ -51,6 +51,8 @@ class DatabaseConnectionListResponse(BaseModel):
     total: int = Field(..., description="总数")
     skip: int = Field(..., description="跳过数量")
     limit: int = Field(..., description="限制数量")
+    has_more: bool = Field(..., description="是否还有更多数据")
+    active_connection_id: int = Field(0, description="当前用户活跃的数据库连接ID，0表示无活跃连接")
 
 class DatabaseConnectionTestResponse(BaseModel):
     """数据库连接测试响应"""
@@ -61,6 +63,95 @@ class DatabaseConnectionTestResponse(BaseModel):
 class DatabaseConnectionDeleteResponse(BaseModel):
     """数据库连接删除响应"""
     message: str = Field(..., description="删除结果消息")
+
+class ActiveDatabaseConnectionResponse(BaseModel):
+    """活跃数据库连接响应"""
+    id: int = Field(..., description="数据库连接ID")
+    database_name: str = Field(..., description="用户自定义的数据库名称")
+    database_uri: str = Field(..., description="数据库连接URI")
+    database_type: str = Field(..., description="数据库类型")
+    database_description: str = Field(..., description="数据库描述")
+    created_at: str = Field(..., description="创建时间")
+    updated_at: str = Field(..., description="更新时间")
+
+    class Config:
+        from_attributes = True
+
+class SetActiveDatabaseConnectionRequest(BaseModel):
+    """设置活跃数据库连接请求"""
+    connection_id: int = Field(..., description="数据库连接ID")
+
+class SetActiveDatabaseConnectionResponse(BaseModel):
+    """设置活跃数据库连接响应"""
+    message: str = Field(..., description="设置结果消息")
+
+@database_router.get("/active", response_model=ActiveDatabaseConnectionResponse, summary="获取用户当前活跃的数据库连接")
+async def get_active_database_connection(
+    current_user: dict = Depends(get_current_user)
+):
+    """获取用户当前活跃的数据库连接"""
+    try:
+        db_repo = DatabaseConnectionRepository()
+        active_connection = db_repo.get_active_by_user_id(current_user["id"])
+        
+        if not active_connection:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="用户没有任何数据库连接"
+            )
+        
+        # 转换为响应模型
+        response = ActiveDatabaseConnectionResponse(
+            id=active_connection.id,
+            database_name=active_connection.database_name,
+            database_uri=active_connection.database_uri,
+            database_type=active_connection.database_type,
+            database_description=active_connection.database_description,
+            created_at=active_connection.created_at.isoformat() if active_connection.created_at else "",
+            updated_at=active_connection.updated_at.isoformat() if active_connection.updated_at else ""
+        )
+        
+        logger.info(f"获取用户活跃数据库连接成功，用户ID: {current_user['id']}, 连接ID: {active_connection.id}")
+        return response
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取用户活跃数据库连接失败: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="获取活跃数据库连接失败，请稍后重试"
+        )
+
+@database_router.post("/active", response_model=SetActiveDatabaseConnectionResponse, summary="设置用户当前活跃的数据库连接")
+async def set_active_database_connection(
+    request: SetActiveDatabaseConnectionRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """设置用户当前活跃的数据库连接"""
+    try:
+        db_repo = DatabaseConnectionRepository()
+        
+        # 设置活跃连接
+        success = db_repo.set_active_by_user_id(current_user["id"], request.connection_id)
+        
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="数据库连接不存在或不属于当前用户"
+            )
+        
+        logger.info(f"设置用户活跃数据库连接成功，用户ID: {current_user['id']}, 连接ID: {request.connection_id}")
+        return SetActiveDatabaseConnectionResponse(message="活跃数据库连接设置成功")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"设置用户活跃数据库连接失败: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="设置活跃数据库连接失败，请稍后重试"
+        )
 
 @database_router.get("/", response_model=DatabaseConnectionListResponse, summary="获取用户数据库连接列表")
 async def get_user_databases(
@@ -91,8 +182,14 @@ async def get_user_databases(
             ))
         
         # 获取总数（用于分页）
-        total_connections = db_repo.get_by_user_id(current_user["id"], 0, 1000)
-        total = len(total_connections)
+        total = db_repo.count_by_user_id(current_user["id"])
+        
+        # 计算是否还有更多数据
+        has_more = (skip + len(database_responses)) < total
+        
+        # 获取当前用户活跃的数据库连接ID
+        active_connection = db_repo.get_active_by_user_id(current_user["id"], auto_set_first=True)
+        active_connection_id = active_connection.id if active_connection else 0
         
         logger.info(f"获取用户数据库连接列表成功，用户ID: {current_user['id']}, 数量: {len(database_responses)}")
         
@@ -100,7 +197,9 @@ async def get_user_databases(
             databases=database_responses,
             total=total,
             skip=skip,
-            limit=limit
+            limit=limit,
+            has_more=has_more,
+            active_connection_id=active_connection_id
         )
             
     except Exception as e:
