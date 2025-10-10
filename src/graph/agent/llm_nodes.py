@@ -1,7 +1,9 @@
 from typing import Dict, Any, Optional
 import re
-
+import logging
 from src.llm import get_llm
+
+logger = logging.getLogger(__name__)
 
 def _extract_sql_from_text(text: str) -> str:
     """
@@ -35,6 +37,7 @@ def optimize_sql_node(state: Dict[str, Any]) -> Dict[str, Any]:
     输入：state["sql"], state["plan"], state["stats"]
     输出：state["optimized_sql"]
     """
+    logger.debug(f"call optimize_sql_node")
     sql = (state.get("sql") or "").strip()
     plan = (state.get("plan") or "").strip()
     stats = state.get("stats") or {}
@@ -88,6 +91,7 @@ def optimize_sql_node(state: Dict[str, Any]) -> Dict[str, Any]:
     return state
 
 def llm_equivalence_check(sql1: str, sql2: str, db_schema: Optional[str] = None) -> Dict[str, Any]:
+    logger.debug(f"call llm_equivalence_check")
     messages = [
         {
             "role": "system",
@@ -131,6 +135,7 @@ def final_report_node(state: Dict[str, Any]) -> Dict[str, Any]:
     LLM Node: FinalReport
     整合多个优化方案的结果并输出综合报告
     """
+    logger.debug(f"call final_report_node")
     sql = (state.get("sql") or "").strip()
     plans = state.get("optimization_plans", [])
     cost_before = state.get("cost_before")
@@ -206,6 +211,7 @@ def generate_optimization_plans(state: Dict[str, Any]) -> Dict[str, Any]:
     输入：state["sql"], state["plan"], state["stats"], state["db_schema"]
     输出：state["optimization_plans"]
     """
+    logger.debug(f"call generate_optimization_plans")
     sql = (state.get("sql") or "").strip()
     plan = (state.get("plan") or "").strip()
     stats = state.get("stats") or {}
