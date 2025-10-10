@@ -32,7 +32,7 @@ class OptimizeResponse(BaseModel):
     plan_feedback: str = Field(default="", description="执行计划或静态分析反馈")
     db_schema: str = Field(default="", description="数据库 schema")
     z3_result: List[str] = Field(default=[], description="Z3 验证结果")
-    history: List[str] = Field(default=[], description="历史轨迹")
+    # history: List[str] = Field(default=[], description="历史轨迹")
     timestamp: int = Field(default=0, description="时间戳")
     
 """路由handler"""
@@ -59,7 +59,7 @@ async def optimize(req: OptimizeRequest):
             plan_feedback=final_state.get("plan_feedback"),
             db_schema=final_state.get("db_schema") or "",
             z3_result=final_state.get("z3_result") or [],
-            history=final_state.get("history") or [],
+            # history=final_state.get("history") or [],
             timestamp=get_unix_timestamp()
         )
 

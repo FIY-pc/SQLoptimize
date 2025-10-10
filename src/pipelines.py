@@ -14,7 +14,7 @@ def build_init_state(
 ) -> State:
     init_state: State = {
         "input_sql": sql, 
-        "history": [], 
+        # "history": [], 
         "stream_writer": stream_writer, 
         "db_schema": db_schema
     }
@@ -38,13 +38,13 @@ def build_init_state(
                     count = len(rules.get("rules", [])) if isinstance(rules.get("rules", None), list) else 0
                 except Exception:
                     count = 0
-                init_state["history"].append(f"[main] 已加载自定义改写规则：{count} 条")
+                # init_state["history"].append(f"[main] 已加载自定义改写规则：{count} 条")
             else:
-                init_state["history"].append("[main] rules.json 顶层不是对象（dict），已忽略")
+                # init_state["history"].append("[main] rules.json 顶层不是对象（dict），已忽略")
         else:
-            init_state["history"].append("[main] 未发现 rules.json（将不注入自定义改写规则）")
+            # init_state["history"].append("[main] 未发现 rules.json（将不注入自定义改写规则）")
     except Exception as e:
-        init_state["history"].append(f"[main] 读取 rules.json 失败：{e}")
+        # init_state["history"].append(f"[main] 读取 rules.json 失败：{e}")
     return init_state
 
 # 供 CLI 用的执行函数

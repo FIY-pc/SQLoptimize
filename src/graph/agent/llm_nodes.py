@@ -53,7 +53,14 @@ def optimize_sql_node(state: Dict[str, Any]) -> Dict[str, Any]:
                 "  2) 如需限制行数，请使用标准语法：OFFSET <n> ROWS FETCH FIRST <m> ROWS ONLY；\n"
                 "  3) 标识符与关键字大小写：不得更改输入 SQL 中标识符的大小写；不要引入反引号；如必须引用标识符，仅使用 ANSI 的双引号；\n"
                 "  4) 仅使用 ANSI 标准函数与语法；任何可能不被 Calcite 接受的写法，必须纠正为可解析的标准写法；\n"
-                "  5) 输出必须是 Calcite 可解析的 SQL。若发现不符合 Calcite 语法，必须自行纠正后再输出。\n"
+                "  5) 输出必须是 Calcite 可解析的 SQL。\n"
+                "\n"
+                "【输出格式要求】\n"
+                "请先给出结构化的“分析”部分，逐条说明你如何利用 EXPLAIN 与统计信息进行决策，至少包含：\n"
+                "  - 来自 EXPLAIN 的证据（例如：using_filesort/using_temporary、rows/filtered/attached_condition、possible_keys/used_key/idx 覆盖、Join 类型、驱动表选择等）；\n"
+                "  - 来自统计信息的证据（例如：表行数、索引存在性、列选择性/基数、外键/唯一约束等）；\n"
+                "  - 每条改写的预期效果与其如何降低 query_cost（如提升过滤选择性、减少回表、避免临时表、移除排序、减少扫描范围等）。\n"
+                "然后再输出优化后的 SQL 代码块，使用 ```sql ... ```。\n"
             ),
         },
         {
@@ -63,7 +70,7 @@ def optimize_sql_node(state: Dict[str, Any]) -> Dict[str, Any]:
                 f"查询计划：\n{plan}\n\n"
                 f"统计信息（JSON）：\n```json\n{stats}\n```\n\n"
                 f"数据库 schema（DDL）：\n```sql\n{db_schema}\n```\n\n"
-                "请给出语义等价且符合 Calcite/ANSI SQL 的优化版本。"
+                "请给出语义等价且符合 Calcite/ANSI SQL 的优化版本（严格按上述输出格式）。"
             ),
         },
     ]
@@ -74,9 +81,10 @@ def optimize_sql_node(state: Dict[str, Any]) -> Dict[str, Any]:
         optimized_sql = _extract_sql_from_text(content)
         state["rewrite_explanation"] = explanation
         state["optimized_sql"] = optimized_sql
-        state.setdefault("history", []).append("[optimize_sql] 已生成候选改写 SQL与改写说明")
+        # state.setdefault("history", []).append("[optimize_sql] 已生成候选改写 SQL与改写说明")
     except Exception as e:
-        state.setdefault("history", []).append(f"[optimize_sql] 生成候选改写失败：{str(e)}")
+        # state.setdefault("history", []).append(f"[optimize_sql] 生成候选改写失败：{str(e)}")
+        pass
     return state
 
 def llm_equivalence_check(sql1: str, sql2: str, db_schema: Optional[str] = None) -> Dict[str, Any]:
@@ -173,9 +181,7 @@ def final_report_node(state: Dict[str, Any]) -> Dict[str, Any]:
                 f"优化方案比较:\n{plans_info}\n\n"
                 "请提供一份详细的优化报告，包括:\n"
                 "1. 原始SQL的问题分析\n"
-                "2. 各个优化方案的比较和评估\n"
-                "3. 最佳优化方案的推荐及理由\n"
-                "4. 实施建议\n\n"
+                "2. 各个优化方案的比较和成本对比\n\n"
                 "请以Markdown格式返回报告。"
             ),
         },
@@ -185,10 +191,10 @@ def final_report_node(state: Dict[str, Any]) -> Dict[str, Any]:
         llm = get_llm()
         report = llm.chat(messages)
         state["final_report"] = report
-        state.setdefault("history", []).append("[report] 已生成最终优化报告")
+        # state.setdefault("history", []).append("[report] 已生成最终优化报告")
     except Exception as e:
         state["final_report"] = f"生成报告失败: {str(e)}"
-        state.setdefault("history", []).append(f"[report] 生成报告失败: {str(e)}")
+        # state.setdefault("history", []).append(f"[report] 生成报告失败: {str(e)}")
     
     return state
 
@@ -215,12 +221,12 @@ def generate_optimization_plans(state: Dict[str, Any]) -> Dict[str, Any]:
                 "- 优化目标：以降低 EXPLAIN JSON 中 query_block.cost_info.query_cost 为首要目标，且不改变结果集语义；\n"
                 "- 优化策略：考虑索引使用与覆盖、谓词下推、调整连接顺序（基数驱动）、去除冗余子句/子查询、避免函数使索引失效、减少不必要的 DISTINCT/ORDER BY/FILESORT/TEMPORARY；\n"
                 "- 兼容性与规范要求（严格遵循 Apache Calcite/ANSI SQL）：\n"
-                "  1) 禁止使用方言特性：反引号`、LIMIT、非标准函数（如 IF、DATE_FORMAT、STR_TO_DATE 等）、Hint（如 /*+ ... */）、方言注释/语法；\n"
+                "  1) 禁止使用方言特性：反引号`、LIMIT、非标准函数、Hint、方言注释/语法；\n"
                 "  2) 如需限制行数，请使用标准语法：OFFSET <n> ROWS FETCH FIRST <m> ROWS ONLY；\n"
                 "  3) 标识符与关键字大小写：不得更改输入 SQL 中标识符的大小写；不要引入反引号；如必须引用标识符，仅使用 ANSI 的双引号；\n"
                 "  4) 仅使用 ANSI 标准函数与语法；任何可能不被 Calcite 接受的写法，必须纠正为可解析的标准写法；\n"
                 "  5) 每个方案的 optimized_sql 字段必须是 Calcite 可解析的 SQL。\n"
-                "- 输出要求：以JSON格式返回两种优化方案，每种方案包含方案ID、描述、优化后的SQL和详细的优化理由。"
+                "- 输出要求：以JSON格式返回两种优化方案，每种方案包含方案ID、描述、优化后的SQL和“详细的优化理由”。\n"
             ),
         },
         {
@@ -238,13 +244,13 @@ def generate_optimization_plans(state: Dict[str, Any]) -> Dict[str, Any]:
                 '      "plan_id": "plan1",\n'
                 '      "description": "方案1的简要描述",\n'
                 '      "optimized_sql": "优化后的SQL1（严格符合 Calcite/ANSI SQL）",\n'
-                '      "reasoning": "详细的优化理由，包括使用的优化策略和预期效果"\n'
+                '      "reasoning": "详细的优化理由（必须引用 EXPLAIN 与统计信息中的具体证据，并解释如何降低 query_cost）"\n'
                 "    },\n"
                 "    {\n"
                 '      "plan_id": "plan2",\n'
                 '      "description": "方案2的简要描述",\n'
                 '      "optimized_sql": "优化后的SQL2（严格符合 Calcite/ANSI SQL）",\n'
-                '      "reasoning": "详细的优化理由，包括使用的优化策略和预期效果"\n'
+                '      "reasoning": "详细的优化理由（必须引用 EXPLAIN 与统计信息中的具体证据，并解释如何降低 query_cost）"\n'
                 "    }\n"
                 "  ]\n"
                 "}\n"
@@ -289,9 +295,10 @@ def generate_optimization_plans(state: Dict[str, Any]) -> Dict[str, Any]:
         if plans:
             state["optimized_sql"] = plans[0]["optimized_sql"]
         
-        state.setdefault("history", []).append(f"[generate_plans] 已生成 {len(plans)} 个优化方案")
+        # state.setdefault("history", []).append(f"[generate_plans] 已生成 {len(plans)} 个优化方案")
         
     except Exception as e:
-        state.setdefault("history", []).append(f"[generate_plans] 生成优化方案失败: {str(e)}")
+        # state.setdefault("history", []).append(f"[generate_plans] 生成优化方案失败: {str(e)}")
+        pass
     
     return state

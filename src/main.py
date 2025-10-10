@@ -54,9 +54,9 @@ def run(sql: str, db_schema: Optional[str] = None) -> None:
     console.print(Panel.fit("\n".join(lines), title="成本估算对比（改写前 vs 改写后）", border_style="blue"))
 
     # 调试信息：历史轨迹
-    history = final_state.get("history", [])
-    if history:
-        console.print(Panel.fit("\n".join(history), title="历史轨迹", border_style="magenta"))
+    # history = final_state.get("history", [])
+    # if history:
+    #     console.print(Panel.fit("\n".join(history), title="历史轨迹", border_style="magenta"))
 
 
 def main():

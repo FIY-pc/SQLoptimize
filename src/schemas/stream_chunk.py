@@ -10,7 +10,7 @@ class NodeChunk(BaseModel):
     plan_feedback: str = Field(default="", description="执行计划或静态分析反馈")    
     db_schema: str = Field(default="", description="数据库 schema")
     z3_result: List[str] = Field(default=[], description="Z3 验证结果")
-    history: List[str] = Field(default=[], description="历史轨迹")
+    # history: List[str] = Field(default=[], description="历史轨迹")
 
 class LLMChunk(BaseModel):
     content: Optional[str] = Field(default="", description="内容")

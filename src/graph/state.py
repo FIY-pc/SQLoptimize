@@ -14,7 +14,7 @@ class SQLState(TypedDict, total=False):
     # 输入与上下文
     sql: str
     db_schema: Optional[str]
-    history: List[str]
+    # history: List[str]
 
     # 查询计划、统计信息
     plan: str
@@ -46,7 +46,7 @@ def build_initial_state(
     return {
         "sql": sql,
         "db_schema": db_schema,
-        "history": [],
+        # "history": [],
         "plan": "",
         "stats": {},
         "optimization_plans": [],
