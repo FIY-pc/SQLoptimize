@@ -1,10 +1,13 @@
 import json
 from pathlib import Path
-from typing import Optional
+from typing import Any, AsyncGenerator, Optional
 from src.stream.stream_writer import StreamWriter
 from src.graph.graph import build_sqlopt_graph
 from src.graph.state import build_initial_state
 from src.graph.state import SQLState as State
+from src.utils import get_unix_timestamp
+import logging
+logger = logging.getLogger(__name__)
 
 # 构建初始状态，从项目根目录读取 rules.json
 def build_init_state(
@@ -39,12 +42,13 @@ def build_init_state(
                 except Exception:
                     count = 0
                 # init_state["history"].append(f"[main] 已加载自定义改写规则：{count} 条")
-            else:
+            # else:
                 # init_state["history"].append("[main] rules.json 顶层不是对象（dict），已忽略")
-        else:
+        # else:
             # init_state["history"].append("[main] 未发现 rules.json（将不注入自定义改写规则）")
     except Exception as e:
         # init_state["history"].append(f"[main] 读取 rules.json 失败：{e}")
+        logger.error(f"读取 rules.json 失败：{e}")
     return init_state
 
 # 供 CLI 用的执行函数
@@ -64,14 +68,31 @@ async def execute_pipeline_api(sql: str, db_schema: Optional[str] = None) -> Sta
 # 流式输出版执行函数
 async def execute_pipeline_stream(
     sql: str, 
-    stream_writer: Optional[StreamWriter] = None,
     db_schema: Optional[str] = None
 ):
     app = build_sqlopt_graph()
     init_state = build_initial_state(
         sql=sql, 
-        stream_writer=stream_writer,
         db_schema=db_schema
     )
-    async for chunk in app.astream(input=init_state):
-        yield chunk
+    try:
+        async for message_chunk, metadata in app.astream(init_state, stream_mode="messages"):
+            yield message_chunk, metadata
+    except Exception as e:
+        logger.error(f"Error in execute_pipeline_stream: {e}")
+        # 发送错误消息
+        error_message = {
+            "type": "error",
+            "content": str(e),
+            "timestamp": get_unix_timestamp()
+        }
+        yield error_message, {"error": True}
+    finally:
+        # 发送结束标记
+        end_message = {
+            "type": "end",
+            "content": "completed",
+            "timestamp": get_unix_timestamp()
+        }
+        yield end_message, {"end": True}
+    
