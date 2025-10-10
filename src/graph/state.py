@@ -1,4 +1,6 @@
-from typing import TypedDict, Optional, Dict, Any, List
+from typing import TypedDict, Optional, Dict, Any, List, Annotated
+from langgraph.graph.message import add_messages
+from langgraph.graph.message import MessagesState
 
 
 class OptimizationPlan(TypedDict, total=False):
@@ -10,7 +12,7 @@ class OptimizationPlan(TypedDict, total=False):
     cost: Optional[float]
 
 
-class SQLState(TypedDict, total=False):
+class SQLState(MessagesState, total=False):
     # 输入与上下文
     sql: str
     db_schema: Optional[str]
@@ -44,6 +46,7 @@ def build_initial_state(
     max_iterations: int = 3
 ) -> SQLState:
     return {
+        "messages": [],
         "sql": sql,
         "db_schema": db_schema,
         # "history": [],
