@@ -1,0 +1,31 @@
+[project]
+name = "sqloptimize"
+version = "0.1.0"
+description = "An agentic SQL optimizer"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "aiomysql>=0.2.0",
+    "aiosqlite>=0.21.0",
+    "distro>=1.9.0",
+    "fastapi>=0.118.2",
+    "jiter>=0.11.0",
+    "langchain-openai>=0.3.35",
+    "langgraph>=0.6.10",
+    "openai>=2.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "psycopg2-binary>=2.9.10",
+    "pydantic[email]>=2.12.0",
+    "pymysql>=1.1.2",
+    "python-dotenv>=1.1.1",
+    "python-jose[cryptography]>=3.5.0",
+    "rich>=14.2.0",
+    "sqlalchemy>=2.0.43",
+    "uvicorn>=0.37.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "langgraph-cli[inmem]",
+    "colorlog"
+]
