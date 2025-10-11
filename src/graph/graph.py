@@ -3,7 +3,7 @@ from typing import Callable, Any
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
 
-from graph.state import SQLState
+from src.graph.state import SQLState
 from src.graph.tools.db_tools import run_explain, fetch_db_stats, run_explain_cost
 from src.graph.tools.equiv import run_equivalence_checker
 from src.graph.agent.llm_nodes import optimize_sql_node, final_report_node, generate_optimization_plans

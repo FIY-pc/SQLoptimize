@@ -2,7 +2,7 @@ from typing import Dict, Any, Optional, Tuple
 import json
 
 from src.config import get_settings
-from graph.state import SQLState
+from src.graph.state import SQLState
 
 
 def run_explain(state: SQLState ,sql: str, database: Optional[str] = None) -> Tuple[bool, str]:

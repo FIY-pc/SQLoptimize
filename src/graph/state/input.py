@@ -1,6 +1,6 @@
 from typing import TypedDict, Optional
-from llm.client import LLMClient
-from utils.mysql_utils import MySQLUtils
+from src.llm import LLMClient
+from src.utils.mysql_utils import MySQLUtils
 import sqlite3
 
 
