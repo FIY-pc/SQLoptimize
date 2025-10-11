@@ -33,7 +33,7 @@ def get_query_plan_node(state: SQLState) -> SQLState:
 def get_stats_node(state: SQLState) -> SQLState:
     logger.debug(f"call get_stats_node")
     stats = {}
-    # stats = fetch_db_stats(state, state.get("sql", ""), database=None)
+    stats = fetch_db_stats(state, state.get("sql", ""), database=None)
     state["stats"] = stats
     # state.setdefault("history", []).append(
     #     "[get_stats] 成功获取统计信息" if stats.get("collection_success") else "[get_stats] 统计信息获取失败或部分失败"
@@ -73,6 +73,7 @@ def equivalence_check_node(state: SQLState) -> SQLState:
         else:
             from src.graph.agent.llm_nodes import llm_equivalence_check  
             llm_res = llm_equivalence_check(
+                state=state,
                 sql1=state.get("sql", ""),
                 sql2=current_plan.get("optimized_sql", ""),
                 db_schema=state.get("db_schema")

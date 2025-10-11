@@ -54,6 +54,7 @@ class StreamWriter:
                 **error_dict
             )
             await self._queue.put(data)
+            await self._queue.put("[ERROR]")
             await self.close()
 
     async def stream(self) -> AsyncIterator[str]:
