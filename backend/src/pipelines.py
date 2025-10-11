@@ -1,77 +1,84 @@
-import json
-from pathlib import Path
 from typing import Optional
-from src.stream.stream_writer import StreamWriter
 from src.graph.graph import build_sqlopt_graph
-from src.graph.state import build_initial_state
+from src.graph.state import build_initial_state, InputState
 from src.graph.state import SQLState as State
-
-# 构建初始状态，从项目根目录读取 rules.json
-def build_init_state(
-    sql: str, 
-    stream_writer: Optional[StreamWriter] = None,
-    db_schema: Optional[str] = None
-) -> State:
-    init_state: State = {
-        "input_sql": sql, 
-        "history": [], 
-        "stream_writer": stream_writer, 
-        "db_schema": db_schema
-    }
-
-    try:
-        root = Path(__file__).resolve().parents[1]
-        rules_file = root / "rules.json"
-        if rules_file.is_file():
-            try:
-                # 使用 utf-8-sig 自动忽略 BOM
-                with rules_file.open("r", encoding="utf-8-sig") as f:
-                    rules = json.load(f)
-            except Exception:
-                # 移除可能的 U+FEFF 再解析
-                with rules_file.open("r", encoding="utf-8") as f:
-                    txt = f.read().lstrip("\ufeff")
-                    rules = json.loads(txt)
-            if isinstance(rules, dict):
-                init_state["rewrite_rules"] = rules
-                try:
-                    count = len(rules.get("rules", [])) if isinstance(rules.get("rules", None), list) else 0
-                except Exception:
-                    count = 0
-                init_state["history"].append(f"[main] 已加载自定义改写规则：{count} 条")
-            else:
-                init_state["history"].append("[main] rules.json 顶层不是对象（dict），已忽略")
-        else:
-            init_state["history"].append("[main] 未发现 rules.json（将不注入自定义改写规则）")
-    except Exception as e:
-        init_state["history"].append(f"[main] 读取 rules.json 失败：{e}")
-    return init_state
+from src.utils import get_unix_timestamp
+from src.llm.client import get_llm
+from src.utils.mysql_utils import MySQLUtils
+from src.config import get_settings
+from src.schemas.pipeline_message import create_error_message, create_end_message
+import logging
+import sqlite3
+logger = logging.getLogger(__name__)
 
 # 供 CLI 用的执行函数
 async def execute_pipeline_cli(sql: str, db_schema: Optional[str] = None) -> State:
+    settings = get_settings()
+    
+    llm = get_llm()
+    mysql_utils = MySQLUtils.create_from_settings()
+    fallback_sqlite = sqlite3.connect(settings.db_path)
+    input_state = InputState(
+        sql=sql, 
+        db_schema=db_schema,
+        llm=llm,
+        mysql_utils=mysql_utils,
+        fallback_sqlite=fallback_sqlite
+    )
+
     app = build_sqlopt_graph()
-    init_state = build_initial_state(sql=sql, db_schema=db_schema)
+    init_state = build_initial_state(input_state)
     final_state: State = await app.ainvoke(init_state)  # type: ignore
     return final_state
 
 # 供 API 用的执行函数
 async def execute_pipeline_api(sql: str, db_schema: Optional[str] = None) -> State:
+    settings = get_settings()
+    llm = get_llm()
+    mysql_utils = MySQLUtils.create_from_settings()
+    fallback_sqlite = sqlite3.connect(settings.db_path)
+    input_state = InputState(
+        sql=sql, 
+        db_schema=db_schema,
+        llm=llm,
+        mysql_utils=mysql_utils,
+        fallback_sqlite=fallback_sqlite
+    )
+
     app = build_sqlopt_graph()
-    init_state = build_initial_state(sql=sql, db_schema=db_schema)
+    init_state = build_initial_state(input_state)
     final_state: State = await app.ainvoke(init_state)  # type: ignore
     return final_state
 
 # 流式输出版执行函数
 async def execute_pipeline_stream(
     sql: str, 
-    stream_writer: Optional[StreamWriter] = None,
     db_schema: Optional[str] = None
 ):
-    app = build_sqlopt_graph()
-    init_state = build_initial_state(
+    settings = get_settings()
+    llm = get_llm()
+    mysql_utils = MySQLUtils.create_from_settings()
+    fallback_sqlite = sqlite3.connect(settings.db_path)
+    input_state = InputState(
         sql=sql, 
-        stream_writer=stream_writer,
-        db_schema=db_schema
+        db_schema=db_schema,
+        llm=llm,
+        mysql_utils=mysql_utils,
+        fallback_sqlite=fallback_sqlite
     )
-    async for chunk in app.astream(input=init_state):
-        yield chunk
+
+    app = build_sqlopt_graph()
+    init_state = build_initial_state(input_state)
+    try:
+        async for message_chunk, metadata in app.astream(init_state, stream_mode="messages"):
+            yield message_chunk, metadata
+    except Exception as e:
+        logger.error(f"Error in execute_pipeline_stream: {e}")
+        # 发送错误消息
+        error_message = create_error_message(str(e), get_unix_timestamp())
+        yield error_message, {"error": True}
+    finally:
+        # 发送结束标记
+        end_message = create_end_message("completed", get_unix_timestamp())
+        yield end_message, {"end": True}
+    

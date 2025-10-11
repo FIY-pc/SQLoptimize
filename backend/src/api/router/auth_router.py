@@ -64,13 +64,6 @@ async def register(request: RegisterRequest):
                 detail="用户名已被使用"
             )
         
-        # 验证密码长度 (bcrypt 限制为72字节)
-        if len(request.password.encode('utf-8')) > 72:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="密码过长，不能超过72个字符"
-            )
-        
         # 创建用户
         user_data = {
             "name": request.name,

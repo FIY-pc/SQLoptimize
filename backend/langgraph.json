@@ -1,0 +1,8 @@
+{
+  "dependencies": ["./"],
+  "graphs": {
+    "sqlopt": "src/graph/dev_entry.py:graph"
+  },
+  "default_graph": "sqlopt",
+  "env": ".env"
+}

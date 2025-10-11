@@ -1,100 +1,127 @@
 import type { UIMessage } from "ai";
 
-// 1. 前端请求体结构 (保持不变, 前端UI发送的格式)
+// 前端请求体（Assistant UI 发来的格式）
 export interface ForwardBody {
     messages: UIMessage[];
     meta?: Record<string, unknown>;
-    model?: string; // model 字段可以保留，但在这个流程中可能不会被使用
+    model?: string;
 }
 
-// 2. 中转到 /api/optimize 的 payload 结构
+// 发往后端 /api/optimize 的请求体
 export interface OptimizeRequestPayload {
     sql: string;
-    db_schema?: string;
     stream: boolean;
-    stream_llm_chunk?: boolean;
 }
 
-// 3. 后端 /api/optimize 的响应体结构
-export interface OptimizeResponsePayload {
-    input_sql: string;
-    optimized_sql: string;
-    plan_feedback: string | null;
-    db_schema: string;
-    z3_result: string[];
-    history: string[];
-    timestamp: number;
-}
-
-// 4. 转换函数：将聊天消息转换为后端请求
+// 构建发往后端的请求体（仅保留流式所需字段）
 export function buildOptimizeRequestPayload(body: ForwardBody): OptimizeRequestPayload {
-    // 提取最后一条用户消息作为 SQL 输入
-    const lastUserMessage = [...body.messages].reverse().find(m => m.role === 'user');
-    const sql = lastUserMessage?.parts.map(p => (p as any).text).join('\n') || '';
+    // 取最后一条 user 消息作为 SQL 输入
+    const lastUser = [...body.messages].reverse().find(m => m.role === 'user');
+    const sql = lastUser?.parts.map(p => (p as any).text).filter(Boolean).join('\n') || '';
 
-    // 从 meta 中获取 db_schema (如果提供的话)
-    const db_schema = body.meta?.db_schema as string | undefined;
+    // 可从 meta 读取控制项（可选）
+    const meta = body.meta || {};
+    const stream = (meta as any).stream ?? true;
 
-    console.log("构建的请求体:", {
-        sql: sql,
-        db_schema: db_schema || "",
-        stream: false,
-        stream_llm_chunk: true,
+    const payload: OptimizeRequestPayload = {
+        sql,
+        stream: Boolean(stream)
+    };
+    return payload;
+}
+
+// 统一错误流（Assistant UI 协议）
+export function createAssistantUIErrorStream(error: string, details?: string) {
+    const encoder = new TextEncoder();
+    const errorData = {
+        type: 'error',
+        error: details ? `${error}: ${details}` : error
+    };
+    const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(errorData)}\n\n`));
+            controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+            controller.close();
+        }
+    });
+    return new Response(stream, {
+        headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+        },
+    });
+}
+
+// 将后端流转换并直接构造 Assistant UI 响应（集成转换和响应头）
+export function toAssistantUIResponse(backendStream: ReadableStream<Uint8Array>) {
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+    const msgId = crypto.randomUUID();
+    let buffer = "";
+    let started = false;
+
+    // 提取行（兼容 SSE 的 data: 行和 NDJSON）
+    function* extractPayloadLines(text: string): Generator<string> {
+        const lines = text.split(/\r?\n/);
+        for (const raw of lines) {
+            const trimmed = raw.trim();
+            if (!trimmed) continue;
+            if (trimmed.startsWith('data:')) {
+                const payload = trimmed.slice(5).trim();
+                if (payload) yield payload;
+            } else {
+                yield trimmed;
+            }
+        }
+    }
+
+    const uiTransform = new TransformStream<Uint8Array, Uint8Array>({
+        start(controller) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "start" })}\n\n`));
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "text-start", id: msgId })}\n\n`));
+            started = true;
+        },
+        transform(chunk, controller) {
+            buffer += decoder.decode(chunk, { stream: true });
+
+            // 只处理完整的行，余下留到下次
+            const lastNewlineIdx = Math.max(buffer.lastIndexOf('\n'), buffer.lastIndexOf('\r'));
+            if (lastNewlineIdx === -1) return;
+
+            const processPart = buffer.slice(0, lastNewlineIdx + 1);
+            buffer = buffer.slice(lastNewlineIdx + 1);
+
+            for (const jsonLine of extractPayloadLines(processPart)) {
+                if (jsonLine === "[DONE]") continue;
+                try {
+                    const obj = JSON.parse(jsonLine);
+                    if (obj?.type === 'AIMessageChunk' && typeof obj?.content === 'string' && obj.content) {
+                        const deltaEvt = { type: 'text-delta', id: msgId, delta: obj.content };
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify(deltaEvt)}\n\n`));
+                    }
+                } catch {
+                    // 忽略无法解析的行
+                }
+            }
+        },
+        flush(controller) {
+            if (started) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "text-end", id: msgId })}\n\n`));
+            }
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "finish" })}\n\n`));
+            controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+        },
     });
 
-    return {
-        sql: sql,
-        db_schema: db_schema || "", // 如果没有提供，则发送空字符串
-        stream: false, // 根据你的后端需求，这里可以设为 true
-        stream_llm_chunk: true,
-    };
-}
-
-
-// 5. 转换函数：将后端响应转为 UIMessage[]
-export function convertOptimizeResponseToUIMessages(data: OptimizeResponsePayload): UIMessage[] {
-    if (!data) return [];
-
-    // 将优化结果和历史记录格式化为 Markdown
-    const formattedContent = `
-### SQL 优化结果
-
-**输入的的 SQL:**
-\`\`\`sql
-${data.input_sql}
-\`\`\`
-
-**优化后的 SQL:**
-\`\`\`sql
-${data.optimized_sql}
-\`\`\`
-
----
-
-### 优化过程历史
-
-\`\`\`
-${data.history.join('\n')}
-\`\`\`
-    `;
-
-    console.log("构建的响应体:", {formattedContent});
-    return [{
-        id: `asst_${Date.now()}`, // 创建一个新的消息 ID
-        role: 'assistant',
-        parts: [{ type: "text", text: formattedContent }],
-    }];
-}
-
-
-// 6. 辅助函数：解析后端响应 (保持不变)
-export async function parseExternalResponse(resp: Response): Promise<any> {
-    const contentType = resp.headers.get("content-type") || "";
-    console.log("外部后端响应的 Content-Type:", contentType);
-    // 响应头是 application/json 则解析为 JSON
-    if (contentType.includes("application/json")) {
-        return await resp.json();
-    }
-    // 否则作为纯文本返回
-    return await resp.text();
+    const piped = backendStream.pipeThrough(uiTransform);
+    return new Response(piped, {
+        headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'x-accel-buffering': 'no',
+            'x-vercel-ai-ui-message-stream': 'v1',
+        },
+    });
 }
