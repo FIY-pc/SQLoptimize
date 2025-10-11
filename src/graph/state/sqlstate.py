@@ -1,7 +1,9 @@
-from typing import TypedDict, Optional, Dict, Any, List, Annotated
-from langgraph.graph.message import add_messages
+from typing import TypedDict, Optional, Dict, Any, List
+import sqlite3
 from langgraph.graph.message import MessagesState
-
+from llm.client import LLMClient
+from utils.mysql_utils import MySQLUtils
+from graph.state.input import InputState
 
 class OptimizationPlan(TypedDict, total=False):
     plan_id: str
@@ -39,16 +41,18 @@ class SQLState(MessagesState, total=False):
     # 最终报告
     final_report: str
 
+    # 依赖
+    llm: LLMClient
+    mysql_utils: MySQLUtils
+    fallback_sqlite: Optional[sqlite3.Connection]
 
 def build_initial_state(
-    sql: str,
-    db_schema: Optional[str] = None,
-    max_iterations: int = 3
+    input_state: InputState
 ) -> SQLState:
     return {
         "messages": [],
-        "sql": sql,
-        "db_schema": db_schema,
+        "sql": input_state.get("sql"),
+        "db_schema": input_state.get("db_schema"),
         # "history": [],
         "plan": "",
         "stats": {},
@@ -59,5 +63,9 @@ def build_initial_state(
         "cost_before": None,
         "cost_after": None,
         "iteration_count": 0,
-        "max_iterations": max_iterations,
+        "max_iterations": input_state.get("max_iterations"),
+        
+        "llm": input_state.get("llm"),
+        "mysql_utils": input_state.get("mysql_utils"),
+        "fallback_sqlite": input_state.get("fallback_sqlite") or None
     }

@@ -3,7 +3,7 @@ from typing import Callable, Any
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
 
-from src.graph.state import SQLState
+from graph.state import SQLState
 from src.graph.tools.db_tools import run_explain, fetch_db_stats, run_explain_cost
 from src.graph.tools.equiv import run_equivalence_checker
 from src.graph.agent.llm_nodes import optimize_sql_node, final_report_node, generate_optimization_plans
@@ -22,7 +22,7 @@ def input_node(state: SQLState) -> SQLState:
 
 def get_query_plan_node(state: SQLState) -> SQLState:
     logger.debug(f"call get_query_plan_node")
-    ok, plan_text = run_explain(state.get("sql", ""), database=None)
+    ok, plan_text = run_explain(state, state.get("sql", ""), database=None)
     state["plan"] = plan_text
     # state.setdefault("history", []).append(
     #     "[get_plan] 成功获取查询计划" if ok else f"[get_plan] 计划获取失败：{plan_text}"
@@ -33,7 +33,7 @@ def get_query_plan_node(state: SQLState) -> SQLState:
 def get_stats_node(state: SQLState) -> SQLState:
     logger.debug(f"call get_stats_node")
     stats = {}
-    stats = fetch_db_stats(state.get("sql", ""), database=None)
+    # stats = fetch_db_stats(state, state.get("sql", ""), database=None)
     state["stats"] = stats
     # state.setdefault("history", []).append(
     #     "[get_stats] 成功获取统计信息" if stats.get("collection_success") else "[get_stats] 统计信息获取失败或部分失败"
@@ -105,11 +105,11 @@ def get_costs_node(state: SQLState) -> SQLState:
         state["cost_after"] = None
         return state
 
-    before = run_explain_cost(state.get("sql", ""), database=None)
+    before = run_explain_cost(state, state.get("sql", ""), database=None)
     
     if 0 <= current_index < len(plans):
         current_plan = plans[current_index]
-        after = run_explain_cost(current_plan.get("optimized_sql", ""), database=None)
+        after = run_explain_cost(state, current_plan.get("optimized_sql", ""), database=None)
         
         current_plan["cost"] = after
         plans[current_index] = current_plan

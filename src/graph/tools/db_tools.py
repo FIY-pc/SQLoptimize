@@ -1,12 +1,11 @@
 from typing import Dict, Any, Optional, Tuple
-import sqlite3
 import json
 
 from src.config import get_settings
-from src.utils.mysql_utils import MySQLUtils
+from graph.state import SQLState
 
 
-def run_explain(sql: str, database: Optional[str] = None) -> Tuple[bool, str]:
+def run_explain(state: SQLState ,sql: str, database: Optional[str] = None) -> Tuple[bool, str]:
     """
     获取查询计划（优先 MySQL，回退 SQLite）。
     返回 (success, plan_text)
@@ -14,9 +13,10 @@ def run_explain(sql: str, database: Optional[str] = None) -> Tuple[bool, str]:
     settings = get_settings()
 
     # Try MySQL first
-    if settings.mysql_host and settings.mysql_user:
+    mysql_utils = state.get("mysql_utils")
+    
+    if mysql_utils:
         try:
-            mysql_utils = MySQLUtils.create_from_settings()
             conn_test = mysql_utils.test_mysql_connection()
             if not conn_test["success"]:
                 return False, f"MySQL连接失败: {conn_test.get('error', '未知错误')}"
@@ -49,9 +49,9 @@ def run_explain(sql: str, database: Optional[str] = None) -> Tuple[bool, str]:
 
     # Fallback SQLite
     try:
-        if not settings.db_path:
+        conn = state.get("fallback_sqlite")
+        if not conn:
             return False, "未配置 db_path，无法使用 SQLite EXPLAIN QUERY PLAN"
-        conn = sqlite3.connect(settings.db_path)
         cur = conn.cursor()
         first_stmt = sql.split(";")[0].strip()
         if not first_stmt:
@@ -66,16 +66,17 @@ def run_explain(sql: str, database: Optional[str] = None) -> Tuple[bool, str]:
         return False, f"SQLite EXPLAIN失败: {e}"
 
 
-def run_explain_cost(sql: str, database: Optional[str] = None) -> Optional[float]:
+def run_explain_cost(state: SQLState, sql: str, database: Optional[str] = None) -> Optional[float]:
     """
     提取 EXPLAIN (FORMAT JSON) 的成本估计（若可用）。
     当前使用 MySQL 的 JSON EXPLAIN（如果包含 cost_info 则返回其中的总成本或近似）。
     若不可用，则返回 None。
     """
+
+    mysql_utils = state.get("mysql_utils")
     settings = get_settings()
-    if settings.mysql_host and settings.mysql_user:
+    if mysql_utils:
         try:
-            mysql_utils = MySQLUtils.create_from_settings()
             plan_result = mysql_utils.get_mysql_explain_plan(sql, database or settings.mysql_database)
             if plan_result["success"] and plan_result.get("explain_json"):
                 explain_json = plan_result["explain_json"]
@@ -142,7 +143,7 @@ def run_explain_cost(sql: str, database: Optional[str] = None) -> Optional[float
     return None
 
 
-def fetch_db_stats(sql: str, database: Optional[str] = None) -> Dict[str, Any]:
+def fetch_db_stats(state: SQLState, sql: str, database: Optional[str] = None) -> Dict[str, Any]:
     """
     获取数据库统计信息
     返回包含表信息、列、索引、以及采集过程中的错误。
@@ -152,10 +153,10 @@ def fetch_db_stats(sql: str, database: Optional[str] = None) -> Dict[str, Any]:
         "collection_errors": [],
         "table_statistics": {},
     }
+    mysql_utils = state.get("mysql_utils")
     settings = get_settings()
-    if settings.mysql_host and settings.mysql_user:
+    if mysql_utils:
         try:
-            mysql_utils = MySQLUtils.create_from_settings()
             # 从 SQL 中解析表名（FROM / JOIN），并收集这些表的统计信息
             import re
             table_candidates = set()
