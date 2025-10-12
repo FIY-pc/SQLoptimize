@@ -36,5 +36,6 @@ def get_llm() -> LLMClient:
     global _llm_singleton
     if _llm_singleton is None:
         from .langchain_llm import LangchainLLMClient
-        _llm_singleton = LangchainLLMClient()
+        # 使用配置构建单例，避免无参初始化报错
+        _llm_singleton = LangchainLLMClient.create_from_settings()
     return _llm_singleton

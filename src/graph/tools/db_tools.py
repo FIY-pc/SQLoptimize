@@ -157,7 +157,6 @@ def fetch_db_stats(state: SQLState, sql: str, database: Optional[str] = None) ->
     settings = get_settings()
     if mysql_utils:
         try:
-            mysql_utils = MySQLUtils.create_from_settings()
             # 从 SQL/EXPLAIN + LLM 中解析表名,并收集这些表的统计信息
 
             import re
@@ -165,8 +164,10 @@ def fetch_db_stats(state: SQLState, sql: str, database: Optional[str] = None) ->
 
             def ask_llm_for_tables(sql_text: str, explain_json_text: Optional[str]) -> set[str]:
                 try:
-                    from src.llm.client import get_llm
-                    llm = get_llm()
+                    llm = state.get("llm")
+                    if llm is None:
+                        from src.llm.client import get_llm
+                        llm = get_llm()
                 except Exception as e:
                     stats["collection_errors"].append(f"LLM 初始化失败，跳过 LLM 表名提取：{e}")
                     return set()
@@ -288,7 +289,7 @@ def fetch_db_stats(state: SQLState, sql: str, database: Optional[str] = None) ->
 
                 return {t for t in tables if t not in cte_names}
 
-            ok, explain_json = run_explain(sql, database or settings.mysql_database)
+            ok, explain_json = run_explain(state, sql, database or settings.mysql_database)
 
             # 1) 优先用 LLM（中文提示词）
             table_candidates: set[str] = ask_llm_for_tables(sql, explain_json if ok else None)
