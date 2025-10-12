@@ -156,26 +156,164 @@ def fetch_db_stats(sql: str, database: Optional[str] = None) -> Dict[str, Any]:
     if settings.mysql_host and settings.mysql_user:
         try:
             mysql_utils = MySQLUtils.create_from_settings()
-            # 从 SQL 中解析表名（FROM / JOIN），并收集这些表的统计信息
+            # 从 SQL/EXPLAIN + LLM 中解析表名,并收集这些表的统计信息
+
             import re
-            table_candidates = set()
-            patterns = [
-                r'\bFROM\s+([`"]?[\w\.]+[`"]?)',
-                r'\bJOIN\s+([`"]?[\w\.]+[`"]?)',
-            ]
-            for pat in patterns:
-                for m in re.finditer(pat, sql, flags=re.IGNORECASE):
+            import json
+
+            def ask_llm_for_tables(sql_text: str, explain_json_text: Optional[str]) -> set[str]:
+                try:
+                    from src.llm.client import get_llm
+                    llm = get_llm()
+                except Exception as e:
+                    stats["collection_errors"].append(f"LLM 初始化失败，跳过 LLM 表名提取：{e}")
+                    return set()
+
+                TPCH_TABLES = {
+                    "nation", "region", "part", "supplier", "partsupp",
+                    "customer", "orders", "lineitem",
+                }
+                TPCDS_TABLES = {
+                    "call_center", "catalog_page", "catalog_returns", "catalog_sales",
+                    "customer", "customer_address", "customer_demographics", "date_dim",
+                    "dbgen_version", "household_demographics", "income_band", "inventory",
+                    "item", "promotion", "reason", "ship_mode", "store", "store_returns",
+                    "store_sales", "time_dim", "warehouse", "web_page", "web_returns",
+                    "web_sales", "web_site",
+                }
+                whitelist = TPCH_TABLES | TPCDS_TABLES
+
+                messages = [
+                    {
+                        "role": "system",
+                        "content": (
+                            "你是一个SQL分析助手。给定一条SQL查询以及可选的MySQL EXPLAIN FORMAT=JSON执行计划，"
+                            "请只提取基础表名（即FROM/JOIN的真实来源表）。"
+                            "不要包含CTE名称、别名、子查询/派生表或视图。"
+                            "输出必须是逗号分隔的小写列表。"
+                            "只返回存在于如下白名单（TPCH/TPCDS）的名称；不在白名单的名称请忽略。"
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": (
+                            f"SQL：\n{sql_text}\n\n"
+                            f"EXPLAIN JSON：\n{explain_json_text or '(无)'}\n\n"
+                            "TPCH白名单：\n"
+                            + ", ".join(sorted(TPCH_TABLES))
+                            + "\nTPCDS白名单：\n"
+                            + ", ".join(sorted(TPCDS_TABLES))
+                            + "\n请只输出逗号分隔的小写表名列表。"
+                        ),
+                    },
+                ]
+
+                try:
+                    content = llm.chat(messages=messages, temperature=0.0, max_tokens=512)
+                except Exception as e:
+                    stats["collection_errors"].append(f"LLM 表名提取调用失败：{e}")
+                    return set()
+
+                raw = content.strip()
+                if not raw:
+                    return set()
+                candidates = set()
+                for token in re.split(r"[,\s]+", raw):
+                    t = token.strip().strip('`"')
+                    if not t:
+                        continue
+                    if "." in t:
+                        t = t.split(".")[-1]
+                    t = t.lower()
+                    if t in whitelist:
+                        candidates.add(t)
+                return candidates
+
+            def _extract_tables_from_explain_json(plan_text: str) -> set[str]:
+                try:
+                    obj = json.loads(plan_text)
+                except Exception:
+                    return set()
+
+                names: set[str] = set()
+
+                def walk(node):
+                    if isinstance(node, dict):
+                        if "table" in node and isinstance(node["table"], dict):
+                            tname = node["table"].get("table_name") or node["table"].get("name")
+                            if isinstance(tname, str):
+                                names.add(tname)
+                        if "table_name" in node and isinstance(node["table_name"], str):
+                            names.add(node["table_name"])
+                        for v in node.values():
+                            walk(v)
+                    elif isinstance(node, list):
+                        for item in node:
+                            walk(item)
+
+                walk(obj)
+
+                def is_derived(s: str) -> bool:
+                    s = s.strip()
+                    return (s.startswith("<") and s.endswith(">")) or s.lower().startswith("derived_") or s.lower().startswith("subquery_")
+
+                return {n for n in names if not is_derived(n)}
+
+            def _parse_table_names(sql_text: str) -> set[str]:
+                cte_names = set()
+                for m in re.finditer(r'\bWITH\s+([A-Za-z_][\w]*)\s+AS\s*\(', sql_text, flags=re.IGNORECASE):
+                    cte_names.add(m.group(1))
+
+                tables = set()
+                for m in re.finditer(r'\bFROM\b\s+([^;]+?)(?=\bWHERE\b|\bGROUP\b|\bHAVING\b|\bORDER\b|$)', sql_text, flags=re.IGNORECASE | re.DOTALL):
+                    clause = m.group(1)
+                    for part in clause.split(','):
+                        raw = part.strip()
+                        if not raw or raw.startswith('('):
+                            continue
+                        first_token = raw.split()[0]
+                        tbl = first_token.strip('`"')
+                        if '.' in tbl:
+                            tbl = tbl.split('.')[-1]
+                        tables.add(tbl)
+
+                for m in re.finditer(r'\bJOIN\s+([`"]?[\w\.]+[`"]?)', sql_text, flags=re.IGNORECASE):
                     raw = m.group(1).strip()
                     tbl = raw.strip('`"')
                     if '.' in tbl:
                         tbl = tbl.split('.')[-1]
-                    tbl = tbl.split()[0]
-                    table_candidates.add(tbl)
+                    tables.add(tbl)
+
+                return {t for t in tables if t not in cte_names}
+
+            ok, explain_json = run_explain(sql, database or settings.mysql_database)
+
+            # 1) 优先用 LLM（中文提示词）
+            table_candidates: set[str] = ask_llm_for_tables(sql, explain_json if ok else None)
+
+            # 2) LLM 为空则回退到 EXPLAIN JSON 的确定性解析
+            if not table_candidates and ok and explain_json:
+                table_candidates = _extract_tables_from_explain_json(explain_json)
+
+            # 3) 再不行就用正则兜底
+            if not table_candidates:
+                table_candidates = _parse_table_names(sql)
 
             if not table_candidates:
-                stats["collection_errors"].append("无法从 SQL 解析出表名，统计信息为空")
+                stats["collection_errors"].append("无法从 SQL/EXPLAIN/LLM 解析出表名，统计信息为空")
 
-            for tbl in table_candidates:
+            normalized = set()
+            for t in table_candidates:
+                t = t.strip('`"')
+                if '.' in t:
+                    t = t.split('.')[-1]
+                normalized.add(t)
+
+            # 先在 table_statistics 中为每张表建立占位，随后采集覆盖
+            for tbl in normalized:
+                stats["table_statistics"].setdefault(tbl, {})
+
+            for tbl in normalized:
                 res = mysql_utils.get_mysql_table_statistics(tbl, database or settings.mysql_database)
                 if res.get("success"):
                     stats["table_statistics"][tbl] = res.get("statistics", {})
