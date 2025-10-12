@@ -40,6 +40,9 @@ class Settings:
     mysql_password: Optional[str] = ""
     mysql_database: Optional[str] = ""
 
+    # 是否使用langsmith开发模式
+    langsmith_dev_mode: bool = False
+
     @staticmethod
     def from_env() -> "Settings":
         api_key = os.getenv("OPENAI_API_KEY", "").strip()
@@ -68,6 +71,9 @@ class Settings:
         mysql_password = os.getenv("MYSQL_PASSWORD", "").strip() or None
         mysql_database = os.getenv("MYSQL_DATABASE", "").strip() or None
 
+        # 是否使用langsmith开发模式
+        langsmith_dev_mode = os.getenv("LANGSMITH_DEV_MODE", "false").lower() == "true"
+
         return Settings(
             api_key=api_key,
             base_url=base_url,
@@ -91,6 +97,8 @@ class Settings:
             mysql_user=mysql_user,
             mysql_password=mysql_password,
             mysql_database=mysql_database,
+
+            langsmith_dev_mode=langsmith_dev_mode,
         )
 
 
