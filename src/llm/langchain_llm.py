@@ -1,7 +1,6 @@
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, TypedDict
 from src.config import get_settings
-from src.graph.state import SQLState as State
-from .client import LLMClient
+from src.llm.client import LLMClient
 from langchain.chat_models import init_chat_model
 
 
@@ -21,7 +20,7 @@ class LangchainLLMClient(LLMClient):
         messages: List[Dict[str, str]],
         temperature: float = 0.2,
         max_tokens: Optional[int] = None,
-        state: Optional[State] = None,
+        state: Optional[TypedDict] = None,
     ) -> str:
         settings = get_settings()
         if not settings.api_key or settings.api_key == "EMPTY_KEY":
@@ -43,7 +42,7 @@ class LangchainLLMClient(LLMClient):
         messages: List[Dict[str, str]],
         temperature: float = 0.2,
         max_tokens: Optional[int] = None,
-        state: Optional[State] = None,
+        state: Optional[TypedDict] = None,
     ) -> str:
         """异步调用 LLM"""
         settings = get_settings()

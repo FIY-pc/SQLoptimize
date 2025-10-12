@@ -48,11 +48,13 @@ class StreamWriter:
             self._error_occurred = True
             logger.error(f"Error in StreamWriter: {error}")
             error_chunk = AIMessageChunk(content=str(error))
+            error_dict = error_chunk.model_dump()
             data = Chunk(
                 metadata={},
-                **error_chunk.model_dump()
+                **error_dict
             )
             await self._queue.put(data)
+            await self._queue.put("[ERROR]")
             await self.close()
 
     async def stream(self) -> AsyncIterator[str]:

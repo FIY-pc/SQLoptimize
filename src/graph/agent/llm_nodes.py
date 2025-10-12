@@ -1,7 +1,7 @@
-from typing import Dict, Any, Optional
+from typing import Optional, Dict, Any
 import re
 import logging
-from src.llm import get_llm
+from src.graph.state import SQLState
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ def _extract_explanation_from_text(text: str) -> str:
         return before.strip()
     return text.strip()
 
-def optimize_sql_node(state: Dict[str, Any]) -> Dict[str, Any]:
+def optimize_sql_node(state: SQLState) -> SQLState:
     """
     LLM Node: OptimizeSQL
     输入：state["sql"], state["plan"], state["stats"]
@@ -78,7 +78,7 @@ def optimize_sql_node(state: Dict[str, Any]) -> Dict[str, Any]:
         },
     ]
     try:
-        llm = get_llm()
+        llm = state.get("llm")
         content = llm.chat(messages)
         explanation = _extract_explanation_from_text(content)
         optimized_sql = _extract_sql_from_text(content)
@@ -90,7 +90,7 @@ def optimize_sql_node(state: Dict[str, Any]) -> Dict[str, Any]:
         pass
     return state
 
-def llm_equivalence_check(sql1: str, sql2: str, db_schema: Optional[str] = None) -> Dict[str, Any]:
+def llm_equivalence_check(state: SQLState, sql1: str, sql2: str, db_schema: Optional[str] = None) -> Dict[str, Any]:
     logger.debug(f"call llm_equivalence_check")
     messages = [
         {
@@ -113,7 +113,7 @@ def llm_equivalence_check(sql1: str, sql2: str, db_schema: Optional[str] = None)
         },
     ]
     try:
-        llm = get_llm()
+        llm = state.get("llm")
         content = llm.chat(messages)
         import re, json
         m = re.search(r'```json\s*(.*?)\s*```', content, re.DOTALL)
@@ -130,7 +130,7 @@ def llm_equivalence_check(sql1: str, sql2: str, db_schema: Optional[str] = None)
             "error": str(e),
         }
 
-def final_report_node(state: Dict[str, Any]) -> Dict[str, Any]:
+def final_report_node(state: SQLState) -> SQLState:
     """
     LLM Node: FinalReport
     整合多个优化方案的结果并输出综合报告
@@ -193,7 +193,7 @@ def final_report_node(state: Dict[str, Any]) -> Dict[str, Any]:
     ]
     
     try:
-        llm = get_llm()
+        llm = state.get("llm")
         report = llm.chat(messages)
         state["final_report"] = report
         # state.setdefault("history", []).append("[report] 已生成最终优化报告")
@@ -204,7 +204,7 @@ def final_report_node(state: Dict[str, Any]) -> Dict[str, Any]:
     return state
 
 
-def generate_optimization_plans(state: Dict[str, Any]) -> Dict[str, Any]:
+def generate_optimization_plans(state: SQLState) -> SQLState:
     """
     LLM Node: GenerateOptimizationPlans
     生成多个SQL优化方案
@@ -267,7 +267,7 @@ def generate_optimization_plans(state: Dict[str, Any]) -> Dict[str, Any]:
     ]
 
     try:
-        llm = get_llm()
+        llm = state.get("llm")
         content = llm.chat(messages)
         
         # 提取JSON部分

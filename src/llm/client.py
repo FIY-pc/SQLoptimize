@@ -1,6 +1,5 @@
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, TypedDict
 import abc
-from src.graph.state import SQLState as State
 
 
 class LLMClient(abc.ABC):
@@ -14,7 +13,7 @@ class LLMClient(abc.ABC):
         messages: List[Dict[str, str]],
         temperature: float = 0.2,
         max_tokens: Optional[int] = None,
-        state: Optional[State] = None,
+        state: Optional[TypedDict] = None,
     ) -> str:
         raise NotImplementedError
 
@@ -24,7 +23,7 @@ class LLMClient(abc.ABC):
         messages: List[Dict[str, str]],
         temperature: float = 0.2,
         max_tokens: Optional[int] = None,
-        state: Optional[State] = None,
+        state: Optional[TypedDict] = None,
     ) -> str:
         raise NotImplementedError
 
