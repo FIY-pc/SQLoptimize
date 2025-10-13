@@ -72,3 +72,9 @@ langgraph dev
 ```
 
 若有其他问题请查阅 [langgraph文档](https://langchain-ai.github.io/langgraph/tutorials/langgraph-platform/local-server/)
+
+# FAQ
+
+Q: 如果运行时碰到类似`unable to open database file`的错误怎么办？
+
+A: 请检查.env中设置的DB_PATH对应目录是否存在（默认为./data/app.db）  
