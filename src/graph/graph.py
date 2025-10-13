@@ -1,14 +1,20 @@
-from typing import Callable
+from typing import Callable, Any
 
 from langgraph.graph import StateGraph, START, END
+from langgraph.graph.state import CompiledStateGraph
 
 from src.graph.state import SQLState
 from src.graph.tools.db_tools import run_explain, fetch_db_stats, run_explain_cost
 from src.graph.tools.equiv import run_equivalence_checker
 from src.graph.agent.llm_nodes import optimize_sql_node, final_report_node, generate_optimization_plans
+import logging
+from src.config import get_settings
+from src.graph.dev.defalt_setting import default_setting_node
 
+logger = logging.getLogger(__name__)
 
 def input_node(state: SQLState) -> SQLState:
+    logger.debug(f"call input_node")
     sql = (state.get("sql") or "").strip()
     # state.setdefault("history", []).append(
     #     f"[input] 接收到 SQL: {sql[:200]}{'...' if len(sql) > 200 else ''}" if sql else "[input] 未提供 sql"
@@ -17,7 +23,8 @@ def input_node(state: SQLState) -> SQLState:
 
 
 def get_query_plan_node(state: SQLState) -> SQLState:
-    ok, plan_text = run_explain(state.get("sql", ""), database=None)
+    logger.debug(f"call get_query_plan_node")
+    ok, plan_text = run_explain(state, state.get("sql", ""), database=None)
     state["plan"] = plan_text
     # state.setdefault("history", []).append(
     #     "[get_plan] 成功获取查询计划" if ok else f"[get_plan] 计划获取失败：{plan_text}"
@@ -26,7 +33,9 @@ def get_query_plan_node(state: SQLState) -> SQLState:
 
 
 def get_stats_node(state: SQLState) -> SQLState:
-    stats = fetch_db_stats(state.get("sql", ""), database=None)
+    logger.debug(f"call get_stats_node")
+    stats = {}
+    stats = fetch_db_stats(state, state.get("sql", ""), database=None)
     state["stats"] = stats
     # state.setdefault("history", []).append(
     #     "[get_stats] 成功获取统计信息" if stats.get("collection_success") else "[get_stats] 统计信息获取失败或部分失败"
@@ -35,12 +44,14 @@ def get_stats_node(state: SQLState) -> SQLState:
 
 
 def optimize_sql_node_wrapper(state: SQLState) -> SQLState:
+    logger.debug(f"call optimize_sql_node_wrapper")
     state["iteration_count"] = int(state.get("iteration_count", 0)) + 1
     return optimize_sql_node(state) 
 
 
 def equivalence_check_node(state: SQLState) -> SQLState:
     """检查当前方案的等价性"""
+    logger.debug(f"call equivalence_check_node")
     current_index = state.get("current_plan_index", 0)
     plans = state.get("optimization_plans", [])
     
@@ -64,6 +75,7 @@ def equivalence_check_node(state: SQLState) -> SQLState:
         else:
             from src.graph.agent.llm_nodes import llm_equivalence_check  
             llm_res = llm_equivalence_check(
+                state=state,
                 sql1=state.get("sql", ""),
                 sql2=current_plan.get("optimized_sql", ""),
                 db_schema=state.get("db_schema")
@@ -86,6 +98,7 @@ def equivalence_check_node(state: SQLState) -> SQLState:
 
 def get_costs_node(state: SQLState) -> SQLState:
     """获取当前方案的成本估算"""
+    logger.debug(f"call get_costs_node")
     current_index = state.get("current_plan_index", 0)
     plans = state.get("optimization_plans", [])
     
@@ -95,11 +108,11 @@ def get_costs_node(state: SQLState) -> SQLState:
         state["cost_after"] = None
         return state
 
-    before = run_explain_cost(state.get("sql", ""), database=None)
+    before = run_explain_cost(state, state.get("sql", ""), database=None)
     
     if 0 <= current_index < len(plans):
         current_plan = plans[current_index]
-        after = run_explain_cost(current_plan.get("optimized_sql", ""), database=None)
+        after = run_explain_cost(state, current_plan.get("optimized_sql", ""), database=None)
         
         current_plan["cost"] = after
         plans[current_index] = current_plan
@@ -120,6 +133,7 @@ def get_costs_node(state: SQLState) -> SQLState:
 
 def next_plan_node(state: SQLState) -> SQLState:
     """切换到下一个优化方案"""
+    logger.debug(f"call next_plan_node")
     current_index = state.get("current_plan_index", 0)
     plans = state.get("optimization_plans", [])
     
@@ -138,6 +152,7 @@ def next_plan_node(state: SQLState) -> SQLState:
 
 def should_process_next_plan(state: SQLState) -> str:
     """决定是否处理下一个方案"""
+    logger.debug(f"call should_process_next_plan")
     current_index = state.get("current_plan_index", 0)
     plans = state.get("optimization_plans", [])
     
@@ -148,6 +163,7 @@ def should_process_next_plan(state: SQLState) -> str:
 
 
 def final_report_node_wrapper(state: SQLState) -> SQLState:
+    logger.debug(f"call final_report_node_wrapper")
     return final_report_node(state)  # type: ignore
 
 
@@ -160,7 +176,7 @@ def should_retry_after_equivalence(state: SQLState) -> str:
     eq = bool(state.get("equivalence", False))
     iter_count = int(state.get("iteration_count", 0))
     max_iters = int(state.get("max_iterations", 2))
-
+    logger.debug(f"call should_retry_after_equivalence")
     if eq:
         # state.setdefault("history", []).append("[graph] 等价性满足，进入成本估算")
         return "get_costs"
@@ -173,9 +189,15 @@ def should_retry_after_equivalence(state: SQLState) -> str:
         return "report"
 
 
-def build_sqlopt_graph() -> StateGraph:
+def build_sqlopt_graph() -> CompiledStateGraph[Any, Any, Any, Any]:
     """构建SQL优化图"""
     graph = StateGraph(SQLState)
+
+    settings = get_settings()
+
+    # 如果在使用langsmith开发模式，则添加默认设置节点
+    if settings.langsmith_dev_mode:
+        graph.add_node("default_setting", default_setting_node)
     
     # 添加节点
     graph.add_node("input", input_node)
@@ -189,7 +211,12 @@ def build_sqlopt_graph() -> StateGraph:
     
     # 设置边
     graph.set_entry_point("input")
-    graph.add_edge("input", "get_plan")
+    if settings.langsmith_dev_mode:
+        graph.add_edge("input", "default_setting")
+        graph.add_edge("default_setting", "get_plan")
+    else:
+        graph.add_edge("input", "get_plan")
+
     graph.add_edge("get_plan", "get_stats")
     graph.add_edge("get_stats", "generate_plans")  
     graph.add_edge("generate_plans", "check_equivalence")
@@ -220,4 +247,4 @@ def build_sqlopt_graph() -> StateGraph:
     # 设置结束点
     graph.add_edge("report", END)
     
-    return graph
+    return graph.compile()

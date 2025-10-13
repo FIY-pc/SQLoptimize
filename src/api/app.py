@@ -33,6 +33,18 @@ migrate_service_db(Base)
 
 logger.info("Database setup complete")
 
+# 初始化管理员用户
+logger.info("Initializing admin user...")
+try:
+    from src.api.utils.init_admin import init_admin_user
+    admin_init_success = init_admin_user()
+    if admin_init_success:
+        logger.info("Admin user initialization completed successfully")
+    else:
+        logger.warning("Admin user initialization failed or admin user already exists")
+except Exception as e:
+    logger.error(f"Failed to initialize admin user: {e}")
+
 app.include_router(ai_router)
 app.include_router(auth_router)
 app.include_router(model_router)

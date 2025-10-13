@@ -1,39 +1,54 @@
+# 快速开始
+
 ## 环境要求
 
-- Python 3.10+
-- Windows（命令以 PowerShell 为例）
+- Python 3.11+
 
-## 安装与运行（Windows）
+## 运行
 
-1) 创建虚拟环境
 ```bash
+# 1. 创建虚拟环境
 python -m venv .venv
-```
 
-2) 激活虚拟环境
-```bash
+# 2. 激活虚拟环境
+# windows
 .\.venv\Scripts\Activate.ps1
-```
+# linux/mac
+source .venv/bin/activate
 
-3) 安装依赖
-```bash
+# 3. 安装依赖
 python -m pip install -r requirements.txt
-```
 
-4) 配置环境变量（复制 .env.example 为 .env 并填写）
-```bash
-copy .env.example .env
-```
+# 4. 配置环境变量（复制 .env.example 为 .env 并填写）
 
-5) 直接运行(示例)
-```bash
+# 运行CLI(示例)
 python -m src.main "SELECT id, name FROM t1 WHERE status = 'ok' UNION ALL SELECT id, name FROM t2 WHERE status = 'ok' ORDER BY id ASC, name ASC;"
-```
 
-6) 启动后端服务
-```bash
+# 启动后端服务
 uvicorn src.api:app --reload
 ```
+
+如果使用uv
+```bash
+# 同步依赖
+uv sync
+
+# 运行CLI
+uv run -m src.main "SELECT id, name FROM t1 WHERE status = 'ok' UNION ALL SELECT id, name FROM t2 WHERE status = 'ok' ORDER BY id ASC, name ASC;"
+
+# 启动后端服务
+uv run uvicorn src.api:app --reload
+```
+
+# 开发指南
+
+## 添加依赖
+
+- 更新requirements.txt:
+
+在requirements.txt手动添加依赖条目
+
+> 除非你非常能保证你的虚拟环境不存在任何与本项目运行无关的包， 否则请不要使用 `pip freeze > requirements.txt` 这种方式更新依赖
 
 ## API 文档
 
@@ -42,3 +57,24 @@ uvicorn src.api:app --reload
 访问 `http://localhost:8000/openapi.json` 可获取 OpenAPI 规范。
 
 或者可以看这个在线版：链接: https://hust-sql-optimimize.apifox.cn  访问密码: sqlopt123
+
+## 使用langgraph studio进行agent开发
+
+1. 首先需要去langsmith注册账号，然后拿一个API Key
+2. 把API Key填入.env文件中，**并将.env的LANGSMITH_DEV_MODE改为true**
+3. 安装langgraph cli
+```bash
+pip install --upgrade "langgraph-cli[inmem]"
+```
+4. 运行以下命令
+```bash
+langgraph dev
+```
+
+若有其他问题请查阅 [langgraph文档](https://langchain-ai.github.io/langgraph/tutorials/langgraph-platform/local-server/)
+
+# FAQ
+
+Q: 如果运行时碰到类似`unable to open database file`的错误怎么办？
+
+A: 请检查.env中设置的DB_PATH对应目录是否存在（默认为./data/app.db）  

@@ -3,6 +3,7 @@ from typing import Optional, List
 from src.models.model_connection import ModelConnection
 from src.api.service_db import get_service_db
 import logging
+from src.schemas.repository.model import CreateModelConnectionReq
 
 logger = logging.getLogger(__name__)
 
@@ -12,11 +13,11 @@ class ModelConnectionRepository:
     def __init__(self):
         pass
     
-    def create(self, model_connection_data: dict) -> ModelConnection:
+    def create(self, model_connection_data: CreateModelConnectionReq) -> ModelConnection:
         """创建模型连接"""
         try:
             with get_service_db() as db:
-                model_connection = ModelConnection(**model_connection_data)
+                model_connection = ModelConnection(**model_connection_data.model_dump())
                 db.add(model_connection)
                 db.commit()  # 提交事务
                 db.refresh(model_connection)

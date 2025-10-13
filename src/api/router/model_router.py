@@ -1,9 +1,11 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, Field
 from typing import List, Optional
+from src.schemas.repository.model import CreateModelConnectionReq
 from src.api.repository import ModelConnectionRepository
 from src.api.service_db import get_service_db
 from src.api.utils import get_current_user
+from src.api.utils.api_key_utils import mask_api_key
 import logging
 
 logger = logging.getLogger(__name__)
@@ -34,11 +36,12 @@ class ModelConnectionUpdate(BaseModel):
     model_avatar_url: Optional[str] = Field(default=None, description="模型头像URL")
 
 class ModelConnectionResponse(BaseModel):
-    """模型连接响应（不包含api_key）"""
+    """模型连接响应"""
     id: int = Field(..., description="模型连接ID")
     model_name: str = Field(..., description="用户自定义的模型名称")
     model: str = Field(..., description="模型名称")
     base_url: str = Field(..., description="模型API地址")
+    api_key: str = Field(..., description="混淆后的模型API密钥")
     model_description: str = Field(..., description="模型描述")
     model_avatar_url: str = Field(..., description="模型头像URL")
     created_at: str = Field(..., description="创建时间")
@@ -62,6 +65,7 @@ class ActiveModelConnectionResponse(BaseModel):
     model_name: str = Field(..., description="用户自定义的模型名称")
     model: str = Field(..., description="模型名称")
     base_url: str = Field(..., description="模型API地址")
+    api_key: str = Field(..., description="混淆后的模型API密钥")
     model_description: str = Field(..., description="模型描述")
     model_avatar_url: str = Field(..., description="模型头像URL")
     created_at: str = Field(..., description="创建时间")
@@ -99,6 +103,7 @@ async def get_active_model_connection(
             model_name=active_connection.model_name,
             model=active_connection.model,
             base_url=active_connection.base_url,
+            api_key=mask_api_key(active_connection.api_key),
             model_description=active_connection.model_description,
             model_avatar_url=active_connection.model_avatar_url,
             created_at=active_connection.created_at.isoformat() if active_connection.created_at else "",
@@ -162,7 +167,7 @@ async def get_user_models(
         else:
             connections = model_repo.get_by_user_id(current_user["id"], skip, limit)
         
-        # 转换为响应模型（不包含api_key）
+        # 转换为响应模型
         model_responses = []
         for conn in connections:
             model_responses.append(ModelConnectionResponse(
@@ -170,6 +175,7 @@ async def get_user_models(
                 model_name=conn.model_name,
                 model=conn.model,
                 base_url=conn.base_url,
+                api_key=mask_api_key(conn.api_key),
                 model_description=conn.model_description,
                 model_avatar_url=conn.model_avatar_url,
                 created_at=conn.created_at.isoformat() if conn.created_at else "",
@@ -221,24 +227,25 @@ async def create_model_connection(
             )
         
         # 创建模型连接
-        connection_data = {
-            "model_name": request.model_name,
-            "model": request.model,
-            "base_url": request.base_url,
-            "api_key": request.api_key,
-            "model_description": request.model_description,
-            "model_avatar_url": request.model_avatar_url,
-            "user_id": current_user["id"]
-        }
+        connection_data = CreateModelConnectionReq(
+            model_name=request.model_name,
+            model=request.model,
+            base_url=request.base_url,
+            api_key=request.api_key,
+            model_description=request.model_description,
+            model_avatar_url=request.model_avatar_url,
+            user_id=current_user["id"]
+        )
         
         connection = model_repo.create(connection_data)
         
-        # 转换为响应模型（不包含api_key）
+        # 转换为响应模型
         response = ModelConnectionResponse(
             id=connection.id,
             model_name=connection.model_name,
             model=connection.model,
             base_url=connection.base_url,
+            api_key=mask_api_key(connection.api_key),
             model_description=connection.model_description,
             model_avatar_url=connection.model_avatar_url,
             created_at=connection.created_at.isoformat() if connection.created_at else "",
@@ -280,12 +287,13 @@ async def get_model_connection(
                 detail="无权访问此模型连接"
             )
         
-        # 转换为响应模型（不包含api_key）
+        # 转换为响应模型
         response = ModelConnectionResponse(
             id=connection.id,
             model_name=connection.model_name,
             model=connection.model,
             base_url=connection.base_url,
+            api_key=mask_api_key(connection.api_key),
             model_description=connection.model_description,
             model_avatar_url=connection.model_avatar_url,
             created_at=connection.created_at.isoformat() if connection.created_at else "",
@@ -352,12 +360,13 @@ async def update_model_connection(
         # 更新模型连接
         updated_connection = model_repo.update(connection_id, update_data)
         
-        # 转换为响应模型（不包含api_key）
+        # 转换为响应模型
         response = ModelConnectionResponse(
             id=updated_connection.id,
             model_name=updated_connection.model_name,
             model=updated_connection.model,
             base_url=updated_connection.base_url,
+            api_key=mask_api_key(updated_connection.api_key),
             model_description=updated_connection.model_description,
             model_avatar_url=updated_connection.model_avatar_url,
             created_at=updated_connection.created_at.isoformat() if updated_connection.created_at else "",
