@@ -45,7 +45,7 @@ def init_admin_user():
         if not database_connection_repository.get_by_name("default"):
             req = CreateDatabaseConnectionReq(
                 database_name="default",
-                database_uri=f"mysql://{settings.mysql_user}:{settings.mysql_password}@{settings.mysql_host}:{settings.mysql_port}/{settings.mysql_database}",
+                database_uri=f"mysql://{settings.mysql_user}:{settings.mysql_password or ''}@{settings.mysql_host}:{settings.mysql_port}/{settings.mysql_database}",
                 database_type="mysql",
                 database_description="default",
                 user_id=user_id
