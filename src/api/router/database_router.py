@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, Field
 from typing import List, Optional
+from src.schemas.repository.database import CreateDatabaseConnectionReq
 from src.api.repository import DatabaseConnectionRepository
 from src.api.service_db import get_service_db
 from src.api.utils import get_current_user
@@ -226,13 +227,13 @@ async def create_database_connection(
             )
         
         # 创建数据库连接
-        connection_data = {
-            "database_name": request.database_name,
-            "database_uri": request.database_uri,
-            "database_type": request.database_type,
-            "database_description": request.database_description,
-            "user_id": current_user["id"]
-        }
+        connection_data = CreateDatabaseConnectionReq(
+            database_name=request.database_name,
+            database_uri=request.database_uri,
+            database_type=request.database_type,
+            database_description=request.database_description,
+            user_id=current_user["id"]
+        )
         
         connection = db_repo.create(connection_data)
         

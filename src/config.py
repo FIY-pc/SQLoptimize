@@ -43,6 +43,9 @@ class Settings:
     # 是否使用langsmith开发模式
     langsmith_dev_mode: bool = False
 
+    admin_email: str = ""
+    admin_password: str = ""
+
     @staticmethod
     def from_env() -> "Settings":
         api_key = os.getenv("OPENAI_API_KEY", "").strip()
@@ -74,6 +77,9 @@ class Settings:
         # 是否使用langsmith开发模式
         langsmith_dev_mode = os.getenv("LANGSMITH_DEV_MODE", "false").lower() == "true"
 
+        admin_email = os.getenv("ADMIN_EMAIL", "").strip()
+        admin_password = os.getenv("ADMIN_PASSWORD", "").strip()
+
         return Settings(
             api_key=api_key,
             base_url=base_url,
@@ -99,6 +105,9 @@ class Settings:
             mysql_database=mysql_database,
 
             langsmith_dev_mode=langsmith_dev_mode,
+
+            admin_email=admin_email,
+            admin_password=admin_password,
         )
 
 

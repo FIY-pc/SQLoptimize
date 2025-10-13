@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, Field
 from typing import List, Optional
+from src.schemas.repository.db_schema import CreateDbSchemaReq
 from src.api.repository.db_schema_repository import DbSchemaRepository
 from src.api.utils import get_current_user
 import logging
@@ -210,11 +211,11 @@ async def create_db_schema(
             )
         
         # 创建数据库模式
-        schema_data = {
-            "schema_name": schema_name,
-            "schema_content": request.schema_content,
-            "user_id": current_user["id"]
-        }
+        schema_data = CreateDbSchemaReq(
+            schema_name=schema_name,
+            schema_content=request.schema_content,
+            user_id=current_user["id"]
+        )
         
         schema = schema_repo.create(schema_data)
         

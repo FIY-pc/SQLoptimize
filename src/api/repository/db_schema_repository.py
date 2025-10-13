@@ -2,6 +2,7 @@ from typing import Optional, List
 from src.models.db_schema import DbSchema
 from src.api.service_db import get_service_db
 import logging
+from src.schemas.repository.db_schema import CreateDbSchemaReq
 
 logger = logging.getLogger(__name__)
 
@@ -11,11 +12,11 @@ class DbSchemaRepository:
     def __init__(self):
         pass
     
-    def create(self, schema_data: dict) -> DbSchema:
+    def create(self, schema_data: CreateDbSchemaReq) -> DbSchema:
         """创建数据库模式"""
         try:
             with get_service_db() as db:
-                schema = DbSchema(**schema_data)
+                schema = DbSchema(**schema_data.model_dump())
                 db.add(schema)
                 db.commit()  # 提交事务
                 db.refresh(schema)
