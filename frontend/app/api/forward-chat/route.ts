@@ -1,4 +1,5 @@
 import { buildOptimizeRequestPayload, ForwardBody, toAssistantUIResponse, createAssistantUIErrorStream } from "./externalPayload";
+// no-op
 
 export async function POST(req: Request) {
     let body: ForwardBody;
@@ -22,10 +23,15 @@ export async function POST(req: Request) {
     const payload = buildOptimizeRequestPayload(body);
 
     try {
-        // 构造鉴权：优先透传来访请求的 Authorization；否则回退到服务端环境变量中的 token
+        // 构造鉴权（优先顺序，与前端 buildHeaders 思路对齐）：
+        // 1) 透传来访请求的 Authorization 头（如果前端已用 buildHeaders 注入）
+        // 2) 自定义头 x-model-service-token（允许前端从 localStorage 显式传入）
+        // 3) 回退到服务端环境变量中的 token
         const incomingAuth = req.headers.get("authorization") || req.headers.get("Authorization");
+        const headerToken = req.headers.get("x-model-service-token");
         const fallbackToken = process.env.NEXT_PUBLIC_MODEL_SERVICE_TOKEN || process.env.MODEL_SERVICE_TOKEN;
-        const authHeader = incomingAuth || (fallbackToken ? `Bearer ${fallbackToken}` : undefined);
+        const chosenToken = headerToken || fallbackToken;
+        const authHeader = incomingAuth || (chosenToken ? `Bearer ${chosenToken}` : undefined);
 
         const resp = await fetch(externalURL, {
             method: "POST",

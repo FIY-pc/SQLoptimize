@@ -22,11 +22,20 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Shadcn } from "@/components/shadcn/Shadcn";
+import { getToken } from "@/lib/serviceUtils";
 
 export const Assistant = () => {
   const runtime = useChatRuntime({
     transport: new AssistantChatTransport({
       api: "/api/forward-chat",
+      headers: (): Record<string, string> => {
+        // 与其它服务保持一致：优先环境变量，其次 localStorage（getToken 已封装）
+        const token = getToken();
+        if (token) {
+          return { Authorization: `Bearer ${token}` };
+        }
+        return {};
+      },
     }),
   });
 
