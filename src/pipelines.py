@@ -82,6 +82,10 @@ async def execute_pipeline_stream(
     active_db_schema = db_schema_repo.get_active_by_user_id(user_id)
     active_model = model_repo.get_active_by_user_id(user_id)
     active_db_conn = db_conn_repo.get_active_by_user_id(user_id)
+
+    logger.debug(f"active_db_schema id: {active_db_schema.id}, schema_content: {active_db_schema.schema_content}")
+    logger.debug(f"active_model id: {active_model.id}, model: {active_model.model}")
+    logger.debug(f"active_db_conn id: {active_db_conn.id}, database_uri: {active_db_conn.database_uri}")
     
     llm = LangchainLLMClient(
         model=active_model.model,

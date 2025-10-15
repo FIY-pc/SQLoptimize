@@ -110,7 +110,7 @@ async def get_active_model_connection(
             updated_at=active_connection.updated_at.isoformat() if active_connection.updated_at else ""
         )
         
-        logger.info(f"获取用户活跃模型连接成功，用户ID: {current_user['id']}, 连接ID: {active_connection.id}")
+        logger.info(f"获取用户活跃模型连接成功，用户ID: {current_user['id']}, 连接ID: {active_connection.id}, model: {active_connection.model}")
         return response
             
     except HTTPException:
