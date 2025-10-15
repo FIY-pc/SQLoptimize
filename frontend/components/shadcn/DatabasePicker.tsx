@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, type FC } from "react";
+import Image from "next/image";
+import { useEffect, useRef, useState, type FC } from "react";
 import { databaseService, type DatabaseOption } from "@/lib/databaseService";
 import { NotFoundError, ValidationError } from "@/lib/modelService";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
@@ -9,16 +10,28 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { PlusIcon, Trash2Icon } from "lucide-react";
+import editIcon from "../../assets/tools/edit.svg";
+import dbIcon from "../../assets/providers/database.svg";
 
 export const DatabasePicker: FC = () => {
-    const [options, setOptions] = useState<Array<{ name: string; value: string }>>([]);
+    const [options, setOptions] = useState<Array<{ name: string; value: string; icon: any }>>([]);
     const [val, setVal] = useState<string>("");
     const [loading, setLoading] = useState<boolean>(false);
     const ADD_VALUE = "__add__";
     const [menuOpen, setMenuOpen] = useState(false);
+    // 拦截“删除”按钮导致的误选中
+    const actionClickRef = useRef(false);
+    const markActionClick = () => { actionClickRef.current = true; setTimeout(() => { actionClickRef.current = false; }, 100); };
+    const stop = (e: any) => { e.preventDefault(); e.stopPropagation(); };
+    const onActionPointerDownCapture = (e: any) => { markActionClick(); e.stopPropagation(); };
+    const onBtnMouseOrPointerDown = (e: any) => { markActionClick(); stop(e); };
+    const onBtnMouseOrPointerUp = (e: any) => { markActionClick(); e.stopPropagation(); };
+    const onBtnKeyDown = (e: any) => { e.stopPropagation(); };
 
-    // Add-database dialog state
+    // Add/Edit dialog state
     const [open, setOpen] = useState(false);
+    const [dialogMode, setDialogMode] = useState<"add" | "edit">("add");
+    const [editingId, setEditingId] = useState<string | null>(null);
     const [creating, setCreating] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [form, setForm] = useState({
@@ -31,7 +44,7 @@ export const DatabasePicker: FC = () => {
     useEffect(() => {
         const syncFromService = () => {
             const opts: DatabaseOption[] = databaseService.getOptions();
-            setOptions(opts.map(o => ({ name: o.name, value: o.value })));
+            setOptions(opts.map(o => ({ name: o.name, value: o.value, icon: dbIcon })));
             setVal(databaseService.getSelectedId() ?? "");
         };
         const unsub = databaseService.subscribe(syncFromService);
@@ -53,6 +66,8 @@ export const DatabasePicker: FC = () => {
         setLoading(true);
         try {
             await databaseService.refresh();
+            const opts: DatabaseOption[] = databaseService.getOptions();
+            setOptions(opts.map(o => ({ name: o.name, value: o.value, icon: dbIcon })));
         } finally {
             setLoading(false);
         }
@@ -60,6 +75,9 @@ export const DatabasePicker: FC = () => {
 
     const handleChange = async (v: string) => {
         if (v === ADD_VALUE) {
+            setDialogMode("add");
+            setEditingId(null);
+            setForm({ database_name: "", database_uri: "", database_type: "opentenbase", database_description: "" });
             setOpen(true);
             return;
         }
@@ -71,6 +89,27 @@ export const DatabasePicker: FC = () => {
         } catch (e) {
             console.error(e);
             setVal(prev);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 独立编辑入口
+    const openEdit = async (id: string) => {
+        setDialogMode("edit");
+        setEditingId(id);
+        setLoading(true);
+        try {
+            const info = await databaseService.get(id);
+            setForm({
+                database_name: info.database_name || "",
+                database_uri: info.database_uri || "",
+                database_type: info.database_type || "",
+                database_description: info.database_description || "",
+            });
+            setOpen(true);
+        } catch (e) {
+            console.error(e);
         } finally {
             setLoading(false);
         }
@@ -99,21 +138,32 @@ export const DatabasePicker: FC = () => {
         }
     };
 
-    const submitCreate = async () => {
+    const submitDialog = async () => {
         if (!form.database_name?.trim() || !form.database_uri?.trim()) {
             return; // 必填：名称与 URI
         }
         setCreating(true);
         try {
-            const created = await databaseService.create({
-                database_name: form.database_name,
-                database_uri: form.database_uri,
-                database_type: form.database_type,
-                database_description: form.database_description,
-            } as any);
-            console.log("Database created:", created);
+            if (dialogMode === "add") {
+                const created = await databaseService.create({
+                    database_name: form.database_name,
+                    database_uri: form.database_uri,
+                    database_type: form.database_type,
+                    database_description: form.database_description,
+                } as any);
+                console.log("Database created:", created);
+            } else if (dialogMode === "edit" && editingId) {
+                const updated = await databaseService.update(editingId, {
+                    database_name: form.database_name,
+                    database_uri: form.database_uri,
+                    database_type: form.database_type,
+                    database_description: form.database_description,
+                }, "PUT");
+                console.log("Database updated:", updated);
+            }
             setOpen(false);
             setForm({ database_name: "", database_uri: "", database_type: "opentenbase", database_description: "" });
+            setEditingId(null);
         } catch (err) {
             console.error(err);
         } finally {
@@ -124,34 +174,66 @@ export const DatabasePicker: FC = () => {
     return (
         <>
             <Select value={val} onValueChange={handleChange} disabled={loading} onOpenChange={handleSelectOpenChange}>
-                <SelectTrigger className="max-w-[300px]" aria-busy={loading}>
-                    <SelectValue placeholder="选择数据库" />
+                <SelectTrigger className="min-w-[150px] max-w-[300px]" aria-busy={loading}>
+                    {(() => {
+                        const selected = options.find(o => o.value === val);
+                        return selected ? (
+                            <div className="flex flex-row items-center px-2 whitespace-nowrap space-x-3">
+                                <span className="relative h-5 w-5 shrink-0">
+                                    <Image src={selected.icon} alt={selected.name} fill className="object-contain" />
+                                </span>
+                                <span className="min-w-0 truncate">{selected.name}</span>
+                            </div>
+                        ) : <SelectValue placeholder="选择数据库" />;
+                    })()}
                 </SelectTrigger>
                 <SelectContent>
                     {options.map((db) => (
-                        <SelectItem key={db.value} value={db.value}>
-                            {menuOpen ? (
-                                <div className="flex w-full items-center justify-between">
-                                    <span className="flex items-center gap-2">
-                                        <span>{db.name}</span>
+                        <SelectItem
+                            key={db.value}
+                            value={db.value}
+                            onSelect={(e) => { if (actionClickRef.current) { e.preventDefault(); (e as any).stopPropagation?.(); } }}
+                        >
+                            <div className="flex w-full items-center justify-between">
+                                <span className="flex flex-row items-center min-w-0 space-x-3">
+                                    <span className="relative h-4 w-4 shrink-0">
+                                        <Image src={db.icon} alt={db.name} fill className="object-contain" />
                                     </span>
-                                    <span className="flex items-center gap-2 pl-2">
+                                    <span className="truncate">{db.name}</span>
+                                </span>
+                                {menuOpen && (
+                                    <span className="flex items-center gap-2 pl-2" onPointerDownCapture={onActionPointerDownCapture}>
+                                        <button
+                                            title="编辑"
+                                            className="rounded p-1 text-muted-foreground hover:bg-primary/10 hover:text-primary disabled:opacity-50"
+                                            onMouseDown={onBtnMouseOrPointerDown}
+                                            onPointerDown={onBtnMouseOrPointerDown}
+                                            onPointerUp={onBtnMouseOrPointerUp}
+                                            onMouseUp={onBtnMouseOrPointerUp}
+                                            onKeyDown={onBtnKeyDown}
+                                            onClick={(e) => { stop(e); openEdit(db.value); }}
+                                            disabled={loading}
+                                        >
+                                            <span className="relative block h-4 w-4">
+                                                <Image src={editIcon} alt="编辑" fill className="object-contain" />
+                                            </span>
+                                        </button>
                                         <button
                                             title="删除"
                                             className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                                            onMouseDown={(e) => e.preventDefault()}
+                                            onMouseDown={onBtnMouseOrPointerDown}
+                                            onPointerDown={onBtnMouseOrPointerDown}
+                                            onPointerUp={onBtnMouseOrPointerUp}
+                                            onMouseUp={onBtnMouseOrPointerUp}
+                                            onKeyDown={onBtnKeyDown}
                                             onClick={(e) => handleDelete(e, db.value)}
                                             disabled={deletingId === db.value || loading}
                                         >
                                             <Trash2Icon className="size-4" />
                                         </button>
                                     </span>
-                                </div>
-                            ) : (
-                                <span className="flex items-center gap-2">
-                                    <span>{db.name}</span>
-                                </span>
-                            )}
+                                )}
+                            </div>
                         </SelectItem>
                     ))}
                     <Separator className="my-1" />
@@ -167,7 +249,7 @@ export const DatabasePicker: FC = () => {
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>添加数据库连接</DialogTitle>
+                        <DialogTitle>{dialogMode === "add" ? "添加数据库连接" : "编辑数据库连接"}</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-3 py-2">
                         <div className="grid gap-1">
@@ -189,7 +271,9 @@ export const DatabasePicker: FC = () => {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setOpen(false)} disabled={creating}>取消</Button>
-                        <Button onClick={submitCreate} disabled={creating || !form.database_name.trim() || !form.database_uri.trim()}>{creating ? "创建中..." : "创建"}</Button>
+                        <Button onClick={submitDialog} disabled={creating || !form.database_name.trim() || !form.database_uri.trim()}>
+                            {creating ? (dialogMode === "add" ? "创建中..." : "保存中...") : (dialogMode === "add" ? "创建" : "保存")}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

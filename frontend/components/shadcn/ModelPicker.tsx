@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { PlusIcon, Trash2Icon } from "lucide-react";
+import editIcon from "../../assets/tools/edit.svg";
 
 // icon 映射，使用 modelService 计算的 iconKey
 const ICONS: Record<string, any> = {
@@ -239,7 +240,7 @@ export const ModelPicker: FC = () => {
           {(() => {
             const selected = options.find(o => o.value === selectedId);
             return selected ? (
-              <div className="flex flex-row items-center px-2 whitespace-nowrap space-x-2">
+              <div className="flex flex-row items-center px-2 whitespace-nowrap space-x-3">
                 <span className="relative h-5 w-5 shrink-0">
                   <Image src={selected.icon} alt={selected.name} fill className="object-contain" />
                 </span>
@@ -262,7 +263,7 @@ export const ModelPicker: FC = () => {
               }}
             >
               <div className="flex w-full items-center justify-between">
-                <span className="flex flex-row items-center min-w-0 space-x-2">
+                <span className="flex flex-row items-center min-w-0 space-x-3">
                   <span className="relative h-4 w-4 shrink-0">
                     <Image src={model.icon} alt={model.name} fill className="object-contain" />
                   </span>
@@ -283,7 +284,9 @@ export const ModelPicker: FC = () => {
                     onClick={(e) => onEditClick(e, model.value)}
                     disabled={loading}
                   >
-                    <PlusIcon className="size-4" />
+                    <span className="relative block h-4 w-4">
+                      <Image src={editIcon} alt="编辑" fill className="object-contain" />
+                    </span>
                   </button>
                   <button
                     title="删除"

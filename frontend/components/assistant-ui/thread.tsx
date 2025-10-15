@@ -31,6 +31,16 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LazyMotion, MotionConfig, domAnimation } from "motion/react";
 import * as m from "motion/react-m";
+import helloIco from "@/assets/tools/hello.webp";
+import Image from "next/image";
+
+// 根据当前时间返回问候语
+const getGreeting = (): string => {
+  const hour = new Date().getHours();
+  if (hour > 5 && hour < 12) return "早 上 好";
+  if (hour >= 12 && hour < 18) return "下 午 好";
+  return "晚 上 好";
+};
 
 export const Thread: FC = () => {
   return (
@@ -82,14 +92,22 @@ const ThreadWelcome: FC = () => {
     <ThreadPrimitive.Empty>
       <div className="aui-thread-welcome-root mx-auto my-auto flex w-full max-w-[var(--thread-max-width)] flex-grow flex-col">
         <div className="aui-thread-welcome-center flex w-full flex-grow flex-col items-center justify-center">
-          <div className="aui-thread-welcome-message flex size-full flex-col justify-center px-8">
+          <div className="aui-thread-welcome-message flex size-full flex-col justify-center items-center px-8 text-center">
             <m.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
-              className="aui-thread-welcome-message-motion-1 text-2xl font-semibold"
+              className="aui-thread-welcome-message-motion-1 text-3xl font-semibold"
             >
-              你好！
+              {getGreeting()}
+              <Image
+                className="inline-block align-middle ml-2 -translate-y-[7px]"
+                src={helloIco}
+                alt="👋"
+                width={40}
+                height={40}
+                priority
+              />
             </m.div>
             <m.div
               initial={{ opacity: 0, y: 10 }}
@@ -98,7 +116,7 @@ const ThreadWelcome: FC = () => {
               transition={{ delay: 0.1 }}
               className="aui-thread-welcome-message-motion-2 text-2xl text-muted-foreground/65"
             >
-              今天我能帮你做什么？
+              请输入你的SQL语句，我能帮你优化。
             </m.div>
           </div>
         </div>
@@ -112,24 +130,24 @@ const ThreadWelcomeSuggestions: FC = () => {
     <div className="aui-thread-welcome-suggestions grid w-full gap-2 @md:grid-cols-2">
       {[
         {
-          title: "解释 React Hooks",
-          label: "例如 useState 和 useEffect",
-          action: "解释 React Hooks，例如 useState 和 useEffect",
+          title: "简单 SQL 语句优化",
+          label: "展示简单 SQL 语句优化的结果输出",
+          action: "SELECT id, name FROM t1 WHERE status = 'ok' UNION ALL SELECT id, name FROM t2 WHERE status = 'ok' ORDER BY id ASC, name ASC;",
         },
         {
-          title: "调试这段 Python 代码",
-          label: "这段代码抛出了错误",
-          action: "请调试这段抛出错误的 Python 代码",
+          title: "复杂 SQL 语句优化",
+          label: "尝试优化一段复杂的 SQL 查询",
+          action: "select cntrycode, count(*) as numcust, sum(c_acctbal) as totacctbal from (select substring(c_phone from 1 for 2) as cntrycode, c_acctbal from customer where substring(c_phone from 1 for 2) in ('13', '31', '23', '29', '30', '18', '17') and c_acctbal > (select avg(c_acctbal) from customer where c_acctbal > 0.00 and substring(c_phone from 1 for 2) in ('13', '31', '23', '29', '30', '18', '17')) and not exists (select * from orders where o_custkey = c_custkey)) as custsale group by cntrycode order by cntrycode;",
         },
         {
-          title: "编写一条 SQL 查询",
-          label: "用于找出最重要的客户",
-          action: "编写一条 SQL 查询，用于找出最重要的客户",
+          title: "优化 SELECT 查询语句",
+          label: "查询合并 status = ok 的记录，按 id ,name 排序",
+          action: "SELECT id, name FROM t1 WHERE status = 'ok' UNION ALL SELECT id, name FROM t2 WHERE status = 'ok' ORDER BY id ASC, name ASC;",
         },
         {
-          title: "制定一份饮食计划",
-          label: "用于健康减重",
-          action: "制定一份用于健康减重的饮食计划",
+          title: "输入你的 SQL 语句",
+          label: "输入你的 SQL 语句，体验优化效果",
+          action: "SELECT *;",
         },
       ].map((suggestedAction, index) => (
         <m.div

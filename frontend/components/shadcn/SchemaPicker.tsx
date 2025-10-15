@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, type FC } from "react";
+import Image from "next/image";
+import { useEffect, useRef, useState, type FC } from "react";
 import { schemaService, type SchemaOption } from "@/lib/schemaService";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Separator } from "../ui/separator";
@@ -9,6 +10,8 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import { NotFoundError, ValidationError } from "@/lib/modelService";
+import editIcon from "../../assets/tools/edit.svg";
+import schemaIcon from "../../assets/providers/schema.svg";
 
 export const SchemaPicker: FC = () => {
     const [options, setOptions] = useState<Array<{ name: string; value: string }>>([]);
@@ -18,12 +21,23 @@ export const SchemaPicker: FC = () => {
     const [menuOpen, setMenuOpen] = useState(false);
 
     const [open, setOpen] = useState(false);
+    const [dialogMode, setDialogMode] = useState<"add" | "edit">("add");
+    const [editingId, setEditingId] = useState<string | null>(null);
     const [creating, setCreating] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [form, setForm] = useState({
         schema_name: "",
         schema_content: "",
     });
+
+    // 防止 SelectItem 被“编辑/删除”按钮误触发选中
+    const actionClickRef = useRef(false);
+    const markActionClick = () => { actionClickRef.current = true; setTimeout(() => { actionClickRef.current = false; }, 100); };
+    const stop = (e: any) => { e.preventDefault(); e.stopPropagation(); };
+    const onActionPointerDownCapture = (e: any) => { markActionClick(); e.stopPropagation(); };
+    const onBtnMouseOrPointerDown = (e: any) => { markActionClick(); stop(e); };
+    const onBtnMouseOrPointerUp = (e: any) => { markActionClick(); e.stopPropagation(); };
+    const onBtnKeyDown = (e: any) => { e.stopPropagation(); };
 
     useEffect(() => {
         const syncFromService = () => {
@@ -52,6 +66,7 @@ export const SchemaPicker: FC = () => {
         setLoading(true);
         try {
             await schemaService.refresh();
+            // 刷新后选项由订阅同步
         } finally {
             setLoading(false);
         }
@@ -59,6 +74,9 @@ export const SchemaPicker: FC = () => {
 
     const handleChange = async (v: string) => {
         if (v === ADD_VALUE) {
+            setDialogMode("add");
+            setEditingId(null);
+            setForm({ schema_name: "", schema_content: "" });
             setOpen(true);
             return;
         }
@@ -98,19 +116,47 @@ export const SchemaPicker: FC = () => {
         }
     };
 
-    const submitCreate = async () => {
+    // 独立编辑入口
+    const openEdit = async (id: string) => {
+        setDialogMode("edit");
+        setEditingId(id);
+        setLoading(true);
+        try {
+            const info = await schemaService.get(id);
+            setForm({
+                schema_name: info.schema_name || "",
+                schema_content: info.schema_content || "",
+            });
+            setOpen(true);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const submitDialog = async () => {
         if (!form.schema_content?.trim()) {
             return; // schema_content 为必填
         }
         setCreating(true);
         try {
-            const created = await schemaService.create({
-                schema_name: form.schema_name || undefined,
-                schema_content: form.schema_content,
-            } as any);
-            console.log("Schema created:", created);
+            if (dialogMode === "add") {
+                const created = await schemaService.create({
+                    schema_name: form.schema_name || undefined,
+                    schema_content: form.schema_content,
+                } as any);
+                console.log("Schema created:", created);
+            } else if (dialogMode === "edit" && editingId) {
+                const updated = await schemaService.update(editingId, {
+                    schema_name: form.schema_name || undefined,
+                    schema_content: form.schema_content,
+                }, "PUT");
+                console.log("Schema updated:", updated);
+            }
             setOpen(false);
             setForm({ schema_name: "", schema_content: "" });
+            setEditingId(null);
         } catch (err) {
             console.error(err);
         } finally {
@@ -121,34 +167,66 @@ export const SchemaPicker: FC = () => {
     return (
         <>
             <Select value={val} onValueChange={handleChange} disabled={loading} onOpenChange={handleSelectOpenChange}>
-                <SelectTrigger className="max-w-[300px]" aria-busy={loading}>
-                    <SelectValue placeholder="选择 Schema" />
+                <SelectTrigger className="min-w-[150px] max-w-[480px]" aria-busy={loading}>
+                    {(() => {
+                        const selected = options.find(o => o.value === val);
+                        return selected ? (
+                            <div className="flex flex-row items-center px-2 whitespace-nowrap space-x-3">
+                                <span className="relative h-5 w-5 shrink-0">
+                                    <Image src={schemaIcon} alt={selected.name} fill className="object-contain" />
+                                </span>
+                                <span className="min-w-0 truncate">{selected.name}</span>
+                            </div>
+                        ) : <SelectValue placeholder="选择 Schema" />;
+                    })()}
                 </SelectTrigger>
                 <SelectContent>
                     {options.map((s) => (
-                        <SelectItem key={s.value} value={s.value}>
-                            {menuOpen ? (
-                                <span className="flex w-full items-center justify-between">
-                                    <span className="flex items-center gap-2">
-                                        <span>{s.name}</span>
+                        <SelectItem
+                            key={s.value}
+                            value={s.value}
+                            onSelect={(e) => { if (actionClickRef.current) { e.preventDefault(); (e as any).stopPropagation?.(); } }}
+                        >
+                            <div className="flex w-full items-center justify-between">
+                                <span className="flex items-center min-w-0 space-x-3">
+                                    <span className="relative h-4 w-4 shrink-0">
+                                        <Image src={schemaIcon} alt={s.name} fill className="object-contain" />
                                     </span>
-                                    <span className="flex items-center gap-2 pl-2">
+                                    <span className="truncate">{s.name}</span>
+                                </span>
+                                {menuOpen && (
+                                    <span className="flex items-center gap-2 pl-2" onPointerDownCapture={onActionPointerDownCapture}>
+                                        <button
+                                            title="编辑"
+                                            className="rounded p-1 text-muted-foreground hover:bg-primary/10 hover:text-primary disabled:opacity-50"
+                                            onMouseDown={onBtnMouseOrPointerDown}
+                                            onPointerDown={onBtnMouseOrPointerDown}
+                                            onPointerUp={onBtnMouseOrPointerUp}
+                                            onMouseUp={onBtnMouseOrPointerUp}
+                                            onKeyDown={onBtnKeyDown}
+                                            onClick={(e) => { stop(e); openEdit(s.value); }}
+                                            disabled={loading}
+                                        >
+                                            <span className="relative block h-4 w-4">
+                                                <Image src={editIcon} alt="编辑" fill className="object-contain" />
+                                            </span>
+                                        </button>
                                         <button
                                             title="删除"
                                             className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                                            onMouseDown={(e) => e.preventDefault()}
+                                            onMouseDown={onBtnMouseOrPointerDown}
+                                            onPointerDown={onBtnMouseOrPointerDown}
+                                            onPointerUp={onBtnMouseOrPointerUp}
+                                            onMouseUp={onBtnMouseOrPointerUp}
+                                            onKeyDown={onBtnKeyDown}
                                             onClick={(e) => handleDelete(e, s.value)}
                                             disabled={deletingId === s.value || loading}
                                         >
                                             <Trash2Icon className="size-4" />
                                         </button>
                                     </span>
-                                </span>
-                            ) : (
-                                <span className="flex items-center gap-2">
-                                    <span>{s.name}</span>
-                                </span>
-                            )}
+                                )}
+                            </div>
                         </SelectItem>
                     ))}
                     <Separator className="my-1" />
@@ -164,7 +242,7 @@ export const SchemaPicker: FC = () => {
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>添加 Schema</DialogTitle>
+                        <DialogTitle>{dialogMode === "add" ? "添加 Schema" : "编辑 Schema"}</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-3 py-2">
                         <div className="grid gap-1">
@@ -178,7 +256,9 @@ export const SchemaPicker: FC = () => {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setOpen(false)} disabled={creating}>取消</Button>
-                        <Button onClick={submitCreate} disabled={creating || !form.schema_content.trim()}>{creating ? "创建中..." : "创建"}</Button>
+                        <Button onClick={submitDialog} disabled={creating || !form.schema_content.trim()}>
+                            {creating ? (dialogMode === "add" ? "创建中..." : "保存中...") : (dialogMode === "add" ? "创建" : "保存")}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

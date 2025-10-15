@@ -79,7 +79,7 @@ const LeftBarSheet: FC = () => {
 const Header: FC = () => {
   return (
     <header className="flex w-full items-center justify-between gap-2">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-5">
         <LeftBarSheet />
         <ModelPicker />
         <DatabasePicker />
