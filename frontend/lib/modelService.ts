@@ -259,8 +259,19 @@ export const modelService = {
                 // 选中优先级：localStorage → 后端活跃 → 列表首项
                 let selected = selectedStorage.read();
                 if (!selected) {
-                    const active = await modelApi.getActive();
-                    selected = active ? String(active.id) : null;
+                    const activeId = typeof data.active_connection_id === "number" && data.active_connection_id > 0
+                        ? String(data.active_connection_id)
+                        : null;
+                    if (activeId) {
+                        selected = activeId;
+                    } else {
+                        try {
+                            const active = await modelApi.getActive();
+                            selected = active ? String(active.id) : null;
+                        } catch {
+                            selected = null;
+                        }
+                    }
                 }
                 applyModelsToStore(models, selected);
                 store.setState({ loading: false });
@@ -275,7 +286,18 @@ export const modelService = {
         try {
             const data = await modelApi.list();
             const models = Array.isArray(data.models) ? data.models : [];
-            applyModelsToStore(models);
+            // 优先使用后端返回的活跃项
+            const activeId = typeof data.active_connection_id === "number" && data.active_connection_id > 0
+                ? String(data.active_connection_id) : null;
+            if (activeId) {
+                applyModelsToStore(models, activeId);
+            } else {
+                // 否则保留当前有效选中，否则选列表首项
+                const current = store.getState().selectedId;
+                const options = toOptions(models);
+                const selected = current && options.some(o => o.value === current) ? current : (options[0]?.value ?? null);
+                applyModelsToStore(models, selected);
+            }
         } catch (e) {
             store.setState({ error: e instanceof Error ? e.message : String(e) });
         } finally {

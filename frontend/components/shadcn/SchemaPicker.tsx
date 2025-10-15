@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState, type FC } from "react";
 import { schemaService, type SchemaOption } from "@/lib/schemaService";
+import { AUTH_CHANGED_EVENT } from "@/lib/authService";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Separator } from "../ui/separator";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
@@ -55,9 +56,18 @@ export const SchemaPicker: FC = () => {
                 setLoading(false);
             }
         })();
-        return () => {
-            unsub();
+        const onAuthChange = (e: any) => {
+            const kind = e?.detail?.kind as ("login" | "logout" | undefined);
+            if (kind === "login") {
+                setLoading(true);
+                schemaService.refresh().finally(() => setLoading(false));
+            } else if (kind === "logout") {
+                setOptions([]);
+                setVal("");
+            }
         };
+        window.addEventListener(AUTH_CHANGED_EVENT, onAuthChange as any);
+        return () => { unsub(); window.removeEventListener(AUTH_CHANGED_EVENT, onAuthChange as any); };
     }, []);
 
     const handleSelectOpenChange = async (isOpen: boolean) => {
@@ -177,7 +187,7 @@ export const SchemaPicker: FC = () => {
                                 </span>
                                 <span className="min-w-0 truncate">{selected.name}</span>
                             </div>
-                        ) : <SelectValue placeholder="选择 Schema" />;
+                        ) : <SelectValue placeholder="请选择 Schema" />;
                     })()}
                 </SelectTrigger>
                 <SelectContent>

@@ -23,6 +23,8 @@ export interface ListDbSchemasResponse {
     total: number;
     skip: number;
     limit: number;
+    has_more?: boolean;
+    active_schema_id?: number; // 0 表示无活跃
 }
 
 // 本地状态（与 modelService 相同模式）
@@ -129,7 +131,14 @@ export const schemaService = {
             schemaStore.setState({ schemas: items, options });
             let selected = readSavedSchema();
             if (!selected) {
-                try { const active = await schemaApi.getActive(); selected = active ? String(active.id) : null; } catch { }
+                const activeId = typeof data.active_schema_id === "number" && data.active_schema_id > 0
+                    ? String(data.active_schema_id)
+                    : null;
+                if (activeId) {
+                    selected = activeId;
+                } else {
+                    try { const active = await schemaApi.getActive(); selected = active ? String(active.id) : null; } catch { }
+                }
             }
             if (selected && !options.find(o => o.value === selected)) selected = null;
             if (!selected) selected = options[0]?.value ?? null;
@@ -146,8 +155,15 @@ export const schemaService = {
             const data = await schemaApi.list();
             const items = Array.isArray(data.schemas) ? data.schemas : [];
             const options = toOptions(items);
-            let selected = schemaStore.getState().selectedId;
-            if (selected && !options.find(o => o.value === selected)) selected = options[0]?.value ?? null;
+            // 优先使用后端返回的活跃项
+            const activeId = typeof data.active_schema_id === "number" && data.active_schema_id > 0
+                ? String(data.active_schema_id) : null;
+            let selected = activeId;
+            if (!selected) {
+                // 否则保留当前有效选中，否则选列表首项
+                const current = schemaStore.getState().selectedId;
+                selected = current && options.find(o => o.value === current) ? current : (options[0]?.value ?? null);
+            }
             schemaStore.setState({ schemas: items, options, selectedId: selected });
             if (selected) saveSchema(selected); else saveSchema(null);
         } catch (e) {

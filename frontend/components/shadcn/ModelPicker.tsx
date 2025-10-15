@@ -2,6 +2,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState, type FC } from "react";
 import { modelService, NotFoundError, ValidationError, type ModelOption } from "@/lib/modelService";
+import { AUTH_CHANGED_EVENT } from "@/lib/authService";
 import anthropic from "../../assets/providers/anthropic.svg";
 import fireworks from "../../assets/providers/fireworks.svg";
 import google from "../../assets/providers/google.svg";
@@ -123,7 +124,19 @@ export const ModelPicker: FC = () => {
         setLoading(false);
       }
     })();
-    return () => { unsub(); };
+    const onAuthChange = (e: any) => {
+      // 登录后刷新模型列表；登出后清空 UI 并显示占位
+      const kind = e?.detail?.kind as ("login" | "logout" | undefined);
+      if (kind === "login") {
+        setLoading(true);
+        modelService.refresh().finally(() => setLoading(false));
+      } else if (kind === "logout") {
+        setOptions([]);
+        setSelectedId("");
+      }
+    };
+    window.addEventListener(AUTH_CHANGED_EVENT, onAuthChange as any);
+    return () => { unsub(); window.removeEventListener(AUTH_CHANGED_EVENT, onAuthChange as any); };
   }, []);
 
   // 
@@ -246,7 +259,7 @@ export const ModelPicker: FC = () => {
                 </span>
                 <span className="min-w-0 truncate">{selected.name}</span>
               </div>
-            ) : <SelectValue />;
+            ) : <SelectValue placeholder="请选择模型" />;
           })()}
         </SelectTrigger>
         <SelectContent className="min-w-[150px] max-w-[480px]">

@@ -13,10 +13,12 @@ import {
 } from "@/components/ui/sidebar";
 import { ThreadList } from "@/components/assistant-ui/thread-list";
 import SqloptimizeIcon from "@/components/icons/SqloptimizeIcon";
+import LoginModal from "@/components/assistant-ui/login-modal";
 
 export function ThreadListSidebar({
   ...props
 }: React.ComponentProps<typeof Sidebar>) {
+  const [loginOpen, setLoginOpen] = React.useState(false);
   return (
     <Sidebar {...props}>
       <SidebarHeader className="aui-sidebar-header mb-2 border-b">
@@ -48,13 +50,11 @@ export function ThreadListSidebar({
       </SidebarContent>
       <SidebarRail />
       <SidebarFooter className="aui-sidebar-footer border-t">
+        <LoginModal open={loginOpen} onOpenChange={setLoginOpen} />
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link
-                href="https://github.com/xjdysq/SQLoptimize"
-                target="_blank"
-              >
+              <button type="button" onClick={() => setLoginOpen(true)}>
                 <div className="aui-sidebar-footer-icon-wrapper flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                   <CircleUserRound className="aui-sidebar-footer-icon size-5" />
                 </div>
@@ -64,7 +64,7 @@ export function ThreadListSidebar({
                   </span>
                   <span>Login</span>
                 </div>
-              </Link>
+              </button>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

@@ -27,6 +27,8 @@ export interface ListDatabasesResponse {
     total: number;
     skip: number;
     limit: number;
+    has_more?: boolean;
+    active_connection_id?: number; // 0 表示无活跃连接
 }
 
 // =========================
@@ -159,7 +161,14 @@ export const databaseService = {
             applyDatabasesToStore(items, null);
             let selected = readSavedDb();
             if (!selected) {
-                try { const active = await databaseApi.getActive(); selected = active ? String(active.id) : null; } catch { /* ignore */ }
+                const activeId = typeof data.active_connection_id === "number" && data.active_connection_id > 0
+                    ? String(data.active_connection_id)
+                    : null;
+                if (activeId) {
+                    selected = activeId;
+                } else {
+                    try { const active = await databaseApi.getActive(); selected = active ? String(active.id) : null; } catch { /* ignore */ }
+                }
             }
             applyDatabasesToStore(items, selected);
         } catch (e) {
@@ -174,7 +183,18 @@ export const databaseService = {
         try {
             const data = await databaseApi.list();
             const items = Array.isArray(data.databases) ? data.databases : [];
-            applyDatabasesToStore(items);
+            // 优先使用后端返回的活跃项
+            const activeId = typeof (data as any).active_connection_id === "number" && (data as any).active_connection_id > 0
+                ? String((data as any).active_connection_id)
+                : null;
+            if (activeId) {
+                applyDatabasesToStore(items, activeId);
+            } else {
+                const current = dbStore.getState().selectedId;
+                const options = toOptions(items);
+                const selected = current && options.some(o => o.value === current) ? current : (options[0]?.value ?? null);
+                applyDatabasesToStore(items, selected);
+            }
         } catch (e) {
             dbStore.setState({ error: e instanceof Error ? e.message : String(e) });
         } finally {

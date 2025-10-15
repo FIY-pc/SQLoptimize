@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState, type FC } from "react";
 import { databaseService, type DatabaseOption } from "@/lib/databaseService";
+import { AUTH_CHANGED_EVENT } from "@/lib/authService";
 import { NotFoundError, ValidationError } from "@/lib/modelService";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Separator } from "../ui/separator";
@@ -57,7 +58,18 @@ export const DatabasePicker: FC = () => {
                 setLoading(false);
             }
         })();
-        return () => { unsub(); };
+        const onAuthChange = (e: any) => {
+            const kind = e?.detail?.kind as ("login" | "logout" | undefined);
+            if (kind === "login") {
+                setLoading(true);
+                databaseService.refresh().finally(() => setLoading(false));
+            } else if (kind === "logout") {
+                setOptions([]);
+                setVal("");
+            }
+        };
+        window.addEventListener(AUTH_CHANGED_EVENT, onAuthChange as any);
+        return () => { unsub(); window.removeEventListener(AUTH_CHANGED_EVENT, onAuthChange as any); };
     }, []);
 
     const handleSelectOpenChange = async (isOpen: boolean) => {
@@ -184,7 +196,7 @@ export const DatabasePicker: FC = () => {
                                 </span>
                                 <span className="min-w-0 truncate">{selected.name}</span>
                             </div>
-                        ) : <SelectValue placeholder="选择数据库" />;
+                        ) : <SelectValue placeholder="请选择数据库" />;
                     })()}
                 </SelectTrigger>
                 <SelectContent>
