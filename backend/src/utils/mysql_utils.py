@@ -179,28 +179,29 @@ class MySQLUtils(DatabaseRegistry):
                         index_type = "UNIQUE" if int(rep_idx.get("NON_UNIQUE", 1)) == 0 else "NORMAL"
                         seq_in_index = rep_idx.get("SEQ_IN_INDEX")
                     
-                    # 添加列的统计信息：distinct值、最大值、最小值
+                    
                     distinct_count = None
                     min_value = None
                     max_value = None
-                    try:
-                        safe_col_name = col_name.replace('`', '``')
-                        
-                        # 获取distinct值数量
-                        distinct_sql = text(f"SELECT COUNT(DISTINCT `{safe_col_name}`) FROM `{table_name}`")
-                        distinct_result = session.execute(distinct_sql).fetchone()
-                        distinct_count = distinct_result[0] if distinct_result else None
-                        
-                        # 获取最小值和最大值
-                        minmax_sql = text(f"SELECT MIN(`{safe_col_name}`), MAX(`{safe_col_name}`) FROM `{table_name}`")
-                        minmax_result = session.execute(minmax_sql).fetchone()
-                        if minmax_result:
-                            min_value = minmax_result[0]
-                            max_value = minmax_result[1]
-                    except Exception as e:
-                        logger.warning(f"获取列 {col_name} 的统计信息失败: {e}")
 
-                    # 对齐用户示例的字段命名
+                    # 列级统计查询（COUNT(DISTINCT)、MIN、MAX）
+                    # try:
+                    #     safe_col_name = col_name.replace('`', '``')
+                        
+                    #     # 获取distinct值数量
+                    #     distinct_sql = text(f"SELECT COUNT(DISTINCT `{safe_col_name}`) FROM `{table_name}`")
+                    #     distinct_result = session.execute(distinct_sql).fetchone()
+                    #     distinct_count = distinct_result[0] if distinct_result else None
+                        
+                    #     # 获取最小值和最大值
+                    #     minmax_sql = text(f"SELECT MIN(`{safe_col_name}`), MAX(`{safe_col_name}`) FROM `{table_name}`")
+                    #     minmax_result = session.execute(minmax_sql).fetchone()
+                    #     if minmax_result:
+                    #         min_value = minmax_result[0]
+                    #         max_value = minmax_result[1]
+                    # except Exception as e:
+                    #     logger.warning(f"获取列 {col_name} 的统计信息失败: {e}")
+
                     column_stats.append({
                         "TABLE_NAME": table_name,
                         "COLUMN_NAME": col_name,

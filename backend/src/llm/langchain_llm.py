@@ -5,15 +5,18 @@ from langchain.chat_models import init_chat_model
 
 
 class LangchainLLMClient(LLMClient):
-    def __init__(self) -> None:
-        settings = get_settings()
+    def __init__(self, model: str, base_url: str, api_key: str) -> None:
         
         self._llm = init_chat_model(
-            model=settings.model,
-            api_key=settings.api_key or "EMPTY_KEY",
-            base_url=settings.base_url,
+            model=model,
+            api_key=api_key or "EMPTY_KEY",
+            base_url=base_url,
             model_provider="openai",
         )
+    @classmethod
+    def create_from_settings(cls) -> "LangchainLLMClient":
+        settings = get_settings()
+        return cls(model=settings.model, base_url=settings.base_url, api_key=settings.api_key)
 
     def chat(
         self,

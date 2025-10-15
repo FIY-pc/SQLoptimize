@@ -22,11 +22,17 @@ export async function POST(req: Request) {
     const payload = buildOptimizeRequestPayload(body);
 
     try {
+        // 构造鉴权：优先透传来访请求的 Authorization；否则回退到服务端环境变量中的 token
+        const incomingAuth = req.headers.get("authorization") || req.headers.get("Authorization");
+        const fallbackToken = process.env.NEXT_PUBLIC_MODEL_SERVICE_TOKEN || process.env.MODEL_SERVICE_TOKEN;
+        const authHeader = incomingAuth || (fallbackToken ? `Bearer ${fallbackToken}` : undefined);
+
         const resp = await fetch(externalURL, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 "Accept": "text/event-stream",
+                ...(authHeader ? { Authorization: authHeader } : {}),
             },
             body: JSON.stringify(payload),
         });

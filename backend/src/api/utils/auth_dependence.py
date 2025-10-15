@@ -2,7 +2,6 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from src.api.utils import jwt_manager
 from src.api.repository import UserRepository
-from src.api.service_db import get_service_db
 
 security = HTTPBearer()
 

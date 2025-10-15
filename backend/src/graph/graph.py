@@ -8,6 +8,8 @@ from src.graph.tools.db_tools import run_explain, fetch_db_stats, run_explain_co
 from src.graph.tools.equiv import run_equivalence_checker
 from src.graph.agent.llm_nodes import optimize_sql_node, final_report_node, generate_optimization_plans
 import logging
+from src.config import get_settings
+from src.graph.dev.defalt_setting import default_setting_node
 
 logger = logging.getLogger(__name__)
 
@@ -190,6 +192,12 @@ def should_retry_after_equivalence(state: SQLState) -> str:
 def build_sqlopt_graph() -> CompiledStateGraph[Any, Any, Any, Any]:
     """构建SQL优化图"""
     graph = StateGraph(SQLState)
+
+    settings = get_settings()
+
+    # 如果在使用langsmith开发模式，则添加默认设置节点
+    if settings.langsmith_dev_mode:
+        graph.add_node("default_setting", default_setting_node)
     
     # 添加节点
     graph.add_node("input", input_node)
@@ -203,7 +211,12 @@ def build_sqlopt_graph() -> CompiledStateGraph[Any, Any, Any, Any]:
     
     # 设置边
     graph.set_entry_point("input")
-    graph.add_edge("input", "get_plan")
+    if settings.langsmith_dev_mode:
+        graph.add_edge("input", "default_setting")
+        graph.add_edge("default_setting", "get_plan")
+    else:
+        graph.add_edge("input", "get_plan")
+
     graph.add_edge("get_plan", "get_stats")
     graph.add_edge("get_stats", "generate_plans")  
     graph.add_edge("generate_plans", "check_equivalence")

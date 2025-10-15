@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from src.pipelines import execute_pipeline_api, execute_pipeline_stream
 from src.utils import get_unix_timestamp
@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 from src.stream.stream_writer import StreamWriter
 from src.schemas.stream_chunk import Chunk
+from src.api.utils import get_current_user
 
 """日志"""
 logger = logging.getLogger(__name__)
@@ -38,18 +39,21 @@ class OptimizeResponse(BaseModel):
 """路由handler"""
 
 @ai_router.post("/optimize",summary="调用agent优化SQL")
-async def optimize(req: OptimizeRequest):
+async def optimize(
+    req: OptimizeRequest,
+    current_user: dict = Depends(get_current_user)
+):
     if req.stream:
         # 流式响应
         try:
-            return StreamingResponse(gen_stream(req), media_type="text/event-stream")
+            return StreamingResponse(gen_stream(req, current_user), media_type="text/event-stream")
         except Exception as e:
             logger.error(f"Error in optimize: {e}")
             raise HTTPException(status_code=500, detail=str(e))
     else:
         # 非流式响应
         try:
-            final_state = await execute_pipeline_api(req.sql, req.db_schema)
+            final_state = await execute_pipeline_api(req.sql, current_user.get("id", 0))
         except Exception as e:
             logger.error(f"Error in optimize: {e}")
             raise HTTPException(status_code=500, detail=str(e))
@@ -63,7 +67,7 @@ async def optimize(req: OptimizeRequest):
             timestamp=get_unix_timestamp()
         )
 
-async def gen_stream(req: OptimizeRequest):
+async def gen_stream(req: OptimizeRequest, current_user: dict):
     stream_writer = StreamWriter()
     pipeline_task = None
     
@@ -73,7 +77,7 @@ async def gen_stream(req: OptimizeRequest):
             try:
                 async for message_chunk, metadata in execute_pipeline_stream(
                     sql=req.sql, 
-                    db_schema=req.db_schema or ""
+                    user_id=current_user.get("id", 0)
                 ):
                     message_chunk_dict = message_chunk.model_dump()
                     chunk = Chunk(

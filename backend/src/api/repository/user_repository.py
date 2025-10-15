@@ -2,6 +2,7 @@ from typing import Optional, List
 from src.models.user import User
 from src.api.service_db import get_service_db
 import logging
+from src.schemas.repository.user import CreateUserReq
 
 logger = logging.getLogger(__name__)
 
@@ -11,12 +12,12 @@ class UserRepository:
     def __init__(self):
         pass
     
-    def create(self, user_data: dict) -> User:
+    def create(self, user_data: CreateUserReq) -> User:
         """创建用户"""
         try:
             with get_service_db() as db:
                 # 如果传入了db会话，直接使用
-                user = User(**user_data)
+                user = User(**user_data.model_dump())
                 db.add(user)
                 db.commit()  # 提交事务
                 db.refresh(user)

@@ -2,8 +2,8 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, EmailStr, Field
 from src.api.repository import UserRepository
 from src.api.utils import jwt_manager, password_manager, get_current_user
-from src.api.service_db import get_service_db
 import logging
+from src.schemas.repository.user import CreateUserReq
 
 logger = logging.getLogger(__name__)
 
@@ -65,11 +65,11 @@ async def register(request: RegisterRequest):
             )
         
         # 创建用户
-        user_data = {
-            "name": request.name,
-            "email": request.email,
-            "password": password_manager.hash_password(request.password)
-        }
+        user_data = CreateUserReq(
+            name=request.name,
+            email=request.email,
+            password=password_manager.hash_password(request.password)
+        )
         
         user = user_repo.create(user_data)
         
@@ -107,7 +107,7 @@ async def login(request: LoginRequest):
         user = user_repo.get_by_email(request.email)
         if not user:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail="用户不存在",
                 headers={"WWW-Authenticate": "Bearer"},
             )
@@ -115,7 +115,7 @@ async def login(request: LoginRequest):
         # 验证密码
         if not password_manager.verify_password(request.password, user.password):
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail="密码错误",
                 headers={"WWW-Authenticate": "Bearer"},
             )

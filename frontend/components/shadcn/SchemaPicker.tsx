@@ -1,50 +1,49 @@
 "use client";
 
 import { useEffect, useState, type FC } from "react";
-import { databaseService, type DatabaseOption } from "@/lib/databaseService";
-import { NotFoundError, ValidationError } from "@/lib/modelService";
+import { schemaService, type SchemaOption } from "@/lib/schemaService";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Separator } from "../ui/separator";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { PlusIcon, Trash2Icon } from "lucide-react";
+import { NotFoundError, ValidationError } from "@/lib/modelService";
 
-export const DatabasePicker: FC = () => {
+export const SchemaPicker: FC = () => {
     const [options, setOptions] = useState<Array<{ name: string; value: string }>>([]);
     const [val, setVal] = useState<string>("");
     const [loading, setLoading] = useState<boolean>(false);
     const ADD_VALUE = "__add__";
     const [menuOpen, setMenuOpen] = useState(false);
 
-    // Add-database dialog state
     const [open, setOpen] = useState(false);
     const [creating, setCreating] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [form, setForm] = useState({
-        database_name: "",
-        database_uri: "",
-        database_type: "opentenbase",
-        database_description: "",
+        schema_name: "",
+        schema_content: "",
     });
 
     useEffect(() => {
         const syncFromService = () => {
-            const opts: DatabaseOption[] = databaseService.getOptions();
-            setOptions(opts.map(o => ({ name: o.name, value: o.value })));
-            setVal(databaseService.getSelectedId() ?? "");
+            const opts: SchemaOption[] = schemaService.getOptions();
+            setOptions(opts.map((o) => ({ name: o.name, value: o.value })));
+            setVal(schemaService.getSelectedId() ?? "");
         };
-        const unsub = databaseService.subscribe(syncFromService);
+        const unsub = schemaService.subscribe(syncFromService);
         (async () => {
             setLoading(true);
             try {
-                await databaseService.init();
+                await schemaService.init();
                 syncFromService();
             } finally {
                 setLoading(false);
             }
         })();
-        return () => { unsub(); };
+        return () => {
+            unsub();
+        };
     }, []);
 
     const handleSelectOpenChange = async (isOpen: boolean) => {
@@ -52,7 +51,7 @@ export const DatabasePicker: FC = () => {
         if (!isOpen) return;
         setLoading(true);
         try {
-            await databaseService.refresh();
+            await schemaService.refresh();
         } finally {
             setLoading(false);
         }
@@ -67,7 +66,7 @@ export const DatabasePicker: FC = () => {
         setVal(v);
         setLoading(true);
         try {
-            await databaseService.select(v);
+            await schemaService.select(v);
         } catch (e) {
             console.error(e);
             setVal(prev);
@@ -80,17 +79,17 @@ export const DatabasePicker: FC = () => {
         e.preventDefault();
         e.stopPropagation();
         if (deletingId) return;
-        const ok = typeof window !== "undefined" ? window.confirm("确认删除该数据库连接？") : true;
+        const ok = typeof window !== "undefined" ? window.confirm("确认删除该 Schema？") : true;
         if (!ok) return;
         try {
             setDeletingId(id);
-            await databaseService.remove(id);
+            await schemaService.remove(id);
         } catch (err) {
             console.error(err);
             if (err instanceof NotFoundError) {
                 if (typeof window !== "undefined") window.alert("删除失败：记录不存在（可能已被删除）。");
             } else if (err instanceof ValidationError) {
-                if (typeof window !== "undefined") window.alert("删除失败：参数错误，请检查 connection_id。");
+                if (typeof window !== "undefined") window.alert("删除失败：参数错误，请检查 schema_id。");
             } else if (err instanceof Error) {
                 if (typeof window !== "undefined") window.alert(`删除失败：${err.message}`);
             }
@@ -100,20 +99,18 @@ export const DatabasePicker: FC = () => {
     };
 
     const submitCreate = async () => {
-        if (!form.database_name?.trim() || !form.database_uri?.trim()) {
-            return; // 必填：名称与 URI
+        if (!form.schema_content?.trim()) {
+            return; // schema_content 为必填
         }
         setCreating(true);
         try {
-            const created = await databaseService.create({
-                database_name: form.database_name,
-                database_uri: form.database_uri,
-                database_type: form.database_type,
-                database_description: form.database_description,
+            const created = await schemaService.create({
+                schema_name: form.schema_name || undefined,
+                schema_content: form.schema_content,
             } as any);
-            console.log("Database created:", created);
+            console.log("Schema created:", created);
             setOpen(false);
-            setForm({ database_name: "", database_uri: "", database_type: "opentenbase", database_description: "" });
+            setForm({ schema_name: "", schema_content: "" });
         } catch (err) {
             console.error(err);
         } finally {
@@ -125,31 +122,31 @@ export const DatabasePicker: FC = () => {
         <>
             <Select value={val} onValueChange={handleChange} disabled={loading} onOpenChange={handleSelectOpenChange}>
                 <SelectTrigger className="max-w-[300px]" aria-busy={loading}>
-                    <SelectValue placeholder="选择数据库" />
+                    <SelectValue placeholder="选择 Schema" />
                 </SelectTrigger>
                 <SelectContent>
-                    {options.map((db) => (
-                        <SelectItem key={db.value} value={db.value}>
+                    {options.map((s) => (
+                        <SelectItem key={s.value} value={s.value}>
                             {menuOpen ? (
-                                <div className="flex w-full items-center justify-between">
+                                <span className="flex w-full items-center justify-between">
                                     <span className="flex items-center gap-2">
-                                        <span>{db.name}</span>
+                                        <span>{s.name}</span>
                                     </span>
                                     <span className="flex items-center gap-2 pl-2">
                                         <button
                                             title="删除"
                                             className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
                                             onMouseDown={(e) => e.preventDefault()}
-                                            onClick={(e) => handleDelete(e, db.value)}
-                                            disabled={deletingId === db.value || loading}
+                                            onClick={(e) => handleDelete(e, s.value)}
+                                            disabled={deletingId === s.value || loading}
                                         >
                                             <Trash2Icon className="size-4" />
                                         </button>
                                     </span>
-                                </div>
+                                </span>
                             ) : (
                                 <span className="flex items-center gap-2">
-                                    <span>{db.name}</span>
+                                    <span>{s.name}</span>
                                 </span>
                             )}
                         </SelectItem>
@@ -158,7 +155,7 @@ export const DatabasePicker: FC = () => {
                     <SelectItem value={ADD_VALUE} disabled={loading}>
                         <span className="flex items-center gap-2 text-muted-foreground">
                             <PlusIcon className="size-4" />
-                            <span>添加数据库连接…</span>
+                            <span>添加 Schema…</span>
                         </span>
                     </SelectItem>
                 </SelectContent>
@@ -167,29 +164,21 @@ export const DatabasePicker: FC = () => {
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>添加数据库连接</DialogTitle>
+                        <DialogTitle>添加 Schema</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-3 py-2">
                         <div className="grid gap-1">
-                            <label className="text-sm text-muted-foreground">显示名称（必填）</label>
-                            <Input value={form.database_name} onChange={(e) => setForm((f) => ({ ...f, database_name: e.target.value }))} placeholder="例如：主库-线上" />
+                            <label className="text-sm text-muted-foreground">名称（可选）</label>
+                            <Input value={form.schema_name} onChange={(e) => setForm((f) => ({ ...f, schema_name: e.target.value }))} placeholder="例如：线上库 Schema" />
                         </div>
                         <div className="grid gap-1">
-                            <label className="text-sm text-muted-foreground">连接 URI（必填）</label>
-                            <Input value={form.database_uri} onChange={(e) => setForm((f) => ({ ...f, database_uri: e.target.value }))} placeholder="例如：mysql://user:pass@host:3306/db" />
-                        </div>
-                        <div className="grid gap-1">
-                            <label className="text-sm text-muted-foreground">类型（可选）</label>
-                            <Input value={form.database_type} onChange={(e) => setForm((f) => ({ ...f, database_type: e.target.value }))} placeholder="例如：opentenbase" />
-                        </div>
-                        <div className="grid gap-1">
-                            <label className="text-sm text-muted-foreground">描述（可选）</label>
-                            <Input value={form.database_description} onChange={(e) => setForm((f) => ({ ...f, database_description: e.target.value }))} placeholder="简短说明" />
+                            <label className="text-sm text-muted-foreground">内容（JSON 或 DDL，必填）</label>
+                            <Input value={form.schema_content} onChange={(e) => setForm((f) => ({ ...f, schema_content: e.target.value }))} placeholder="粘贴 Schema 内容" />
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setOpen(false)} disabled={creating}>取消</Button>
-                        <Button onClick={submitCreate} disabled={creating || !form.database_name.trim() || !form.database_uri.trim()}>{creating ? "创建中..." : "创建"}</Button>
+                        <Button onClick={submitCreate} disabled={creating || !form.schema_content.trim()}>{creating ? "创建中..." : "创建"}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

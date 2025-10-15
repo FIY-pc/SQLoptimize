@@ -21,25 +21,44 @@ def run_equivalence_checker(
     # 自动构建 schema（当未显式传入时）
     if not db_schema:
         try:
-            # 解析 SQL 中的表名（FROM / JOIN）
             import re
             from src.utils.mysql_utils import MySQLUtils
 
             def _parse_table_names(sql_text: str) -> set[str]:
+                # 1) 收集 CTE 名称
+                cte_names = set()
+                for m in re.finditer(r'\bWITH\s+([A-Za-z_][\w]*)\s+AS\s*\(', sql_text, flags=re.IGNORECASE):
+                    cte_names.add(m.group(1))
+
                 tables = set()
-                patterns = [
-                    r'\bFROM\s+([`"]?[\w\.]+[`"]?)',
-                    r'\bJOIN\s+([`"]?[\w\.]+[`"]?)',
-                ]
-                for pat in patterns:
-                    for m in re.finditer(pat, sql_text, flags=re.IGNORECASE):
-                        raw = m.group(1).strip()
-                        tbl = raw.strip('`"')
+
+                # 2) 解析所有 FROM 子句，提取逗号分隔的表项
+                for m in re.finditer(
+                    r'\bFROM\b\s+([^;]+?)(?=\bWHERE\b|\bGROUP\b|\bHAVING\b|\bORDER\b|$)',
+                    sql_text,
+                    flags=re.IGNORECASE | re.DOTALL
+                ):
+                    clause = m.group(1)
+                    for part in clause.split(','):
+                        raw = part.strip()
+                        if not raw or raw.startswith('('):
+                            continue
+                        first_token = raw.split()[0]
+                        tbl = first_token.strip('`"')
                         if '.' in tbl:
                             tbl = tbl.split('.')[-1]
-                        tbl = tbl.split()[0]
                         tables.add(tbl)
-                return tables
+
+                # 3) 解析 JOIN 后的表
+                for m in re.finditer(r'\bJOIN\s+([`"]?[\w\.]+[`"]?)', sql_text, flags=re.IGNORECASE):
+                    raw = m.group(1).strip()
+                    tbl = raw.strip('`"')
+                    if '.' in tbl:
+                        tbl = tbl.split('.')[-1]
+                    tables.add(tbl)
+
+                # 4) 排除 CTE 名称
+                return {t for t in tables if t not in cte_names}
 
             table_names = _parse_table_names(sql1 + " " + sql2)
 

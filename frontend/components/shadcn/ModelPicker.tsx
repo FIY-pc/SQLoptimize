@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
-import { useEffect, useMemo, useState, type FC } from "react";
-import { modelService, type BackendModelItem, NotFoundError, ValidationError } from "@/lib/modelService";
+import { useEffect, useRef, useState, type FC } from "react";
+import { modelService, NotFoundError, ValidationError, type ModelOption } from "@/lib/modelService";
 import anthropic from "../../assets/providers/anthropic.svg";
 import fireworks from "../../assets/providers/fireworks.svg";
 import google from "../../assets/providers/google.svg";
@@ -9,6 +9,7 @@ import deepseek from "../../assets/providers/deepseek.svg";
 import meta from "../../assets/providers/meta.svg";
 import mistral from "../../assets/providers/mistral.svg";
 import openai from "../../assets/providers/openai.svg";
+import qwen from "../../assets/providers/qwen.svg";
 import {
   Select,
   SelectContent,
@@ -22,54 +23,52 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 
-// 作为后备选项（当后端不可用或返回空时使用）
-const FALLBACK_MODELS = [
-  // {
-  //   name: "GPT 4o-mini",
-  //   value: "gpt-4o-mini",
-  //   icon: openai,
-  // },
-  {
-    name: "Deepseek R1",
-    value: "deepseek-r1",
-    icon: deepseek,
-  },
-  {
-    name: "Claude 3.5 Sonnet",
-    value: "claude-3.5-sonnet",
-    icon: anthropic,
-  },
-  {
-    name: "Gemini 2.0 Flash",
-    value: "gemini-2.0-flash",
-    icon: google,
-  },
-  {
-    name: "Llama 3 8b",
-    value: "llama-3-8b",
-    icon: meta,
-  },
-  {
-    name: "Firefunction V2",
-    value: "firefunction-v2",
-    icon: fireworks,
-  },
-  {
-    name: "Mistral 7b",
-    value: "mistral-7b",
-    icon: mistral,
-  },
-];
+// icon 映射，使用 modelService 计算的 iconKey
+const ICONS: Record<string, any> = {
+  openai,
+  deepseek,
+  anthropic,
+  google,
+  meta,
+  mistral,
+  fireworks,
+  qwen,
+};
 export const ModelPicker: FC = () => {
-  const [options, setOptions] = useState<Array<{ name: string; value: string; icon: any }>>(FALLBACK_MODELS);
-  const defaultValue = useMemo(() => options[0]?.value ?? "", [options]);
-  const [inner, setInner] = useState<string>(defaultValue);
+  // 选项与当前选中的 id
+  const [options, setOptions] = useState<Array<{ name: string; value: string; icon: any }>>([]);
+  const [selectedId, setSelectedId] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
-  const val = inner;
   const ADD_VALUE = "__add__";
 
-  // Add-model dialog state
-  const [open, setOpen] = useState(false);
+  // 事件拦截策略说明：
+  // - Radix Select 在 pointerup/mouseup 阶段提交选中，子元素按钮点击容易“误选中”。
+  // - 我们在按钮 pointerdown 阶段标记 actionClickRef，并阻止冒泡；在 mouseup 仅 stopPropagation，允许 onClick 正常触发。
+  // - 在 SelectItem 的 onSelect 中，根据 actionClickRef 判定并 e.preventDefault()，最终阻止选中。
+  // - 标记有效时间（100ms）覆盖 mouseup→click 序列，避免竞态。
+  // 用于标记“当前是点击了操作按钮区域”，在 SelectItem 的 onSelect 中阻止选中
+  const actionClickRef = useRef(false);
+  const markActionClick = () => {
+    actionClickRef.current = true;
+    // 在事件循环结束后清除标记，避免影响下一次普通选择
+    setTimeout(() => {
+      actionClickRef.current = false;
+    }, 100);
+  };
+
+  // 常用事件帮助函数，提升可读性
+  const stop = (e: any) => { e.preventDefault(); e.stopPropagation(); };
+  const onActionPointerDownCapture = (e: any) => { markActionClick(); e.stopPropagation(); };
+  const onBtnMouseOrPointerDown = (e: any) => { markActionClick(); stop(e); };
+  const onBtnMouseOrPointerUp = (e: any) => { markActionClick(); e.stopPropagation(); };
+  const onBtnKeyDown = (e: any) => { e.stopPropagation(); };
+  const onEditClick = (e: any, id: string) => { stop(e); openEdit(id); };
+  const onDeleteClick = (e: any, id: string) => handleDelete(e, id);
+
+  // 新增/编辑弹窗状态
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"add" | "edit">("add");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -81,60 +80,49 @@ export const ModelPicker: FC = () => {
     model_avatar_url: "",
   });
 
-  // 简单的 provider/icon 映射与回退逻辑
-  const pickIcon = (provider?: string, modelName?: string) => {
-    const key = (provider || modelName || "").toLowerCase();
-    if (key.includes("openai") || key.includes("gpt")) return openai;
-    if (key.includes("deepseek")) return deepseek;
-    if (key.includes("claude") || key.includes("anthropic")) return anthropic;
-    if (key.includes("gemini") || key.includes("google")) return google;
-    if (key.includes("llama") || key.includes("meta")) return meta;
-    if (key.includes("mistral")) return mistral;
-    if (key.includes("firefunction") || key.includes("fireworks")) return fireworks;
-    return openai;
+  // 独立的编辑入口，避免通过 handleChange 触发 select
+  const openEdit = async (id: string) => {
+    setDialogMode("edit");
+    setEditingId(id);
+    setLoading(true);
+    try {
+      const info = await modelService.get(id);
+      setForm({
+        model_name: info.model_name || "",
+        model: info.model || "",
+        base_url: info.base_url || "",
+        api_key: info.api_key || "",
+        model_description: info.model_description || "",
+        model_avatar_url: info.model_avatar_url || "",
+      });
+      setDialogOpen(true);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // 初始化模型列表：尝试从后端加载模型列表，并基于 localStorage 选择默认项
+  // 把 UI 状态绑定到 modelService 的本地 store
   useEffect(() => {
-    let cancelled = false;
+    const syncFromService = () => {
+      const opts: ModelOption[] = modelService.getOptions();
+      const mapped = opts.map(o => ({ name: o.name, value: o.value, icon: ICONS[o.iconKey] || openai }));
+      setOptions(mapped);
+      setSelectedId(modelService.getSelectedId() ?? "");
+    };
+    const unsub = modelService.subscribe(syncFromService);
+    // 首次初始化
     (async () => {
       setLoading(true);
       try {
-        const data = await modelService.list();
-        const arr: BackendModelItem[] = Array.isArray(data.models) ? data.models : [];
-        if (arr.length > 0) {
-          const mapped = arr.map((it) => {
-            // 现在选择值使用 id，切换时用 GET /api/models/{id}
-            const value = String(it.id);
-            const name = it.model_name || it.model || value;
-            // 若后端未来提供 provider 字段可替换；当前用模型名推断
-            return { name, value, icon: pickIcon(undefined, it.model) };
-          });
-          if (!cancelled) setOptions(mapped);
-          // 决定初始选中：优先 localStorage，其次列表首项
-          if (!cancelled) {
-            const saved = typeof window !== "undefined" ? window.localStorage.getItem("SELECTED_MODEL_ID") : null;
-            const initial = saved && mapped.find(m => m.value === saved) ? saved : (mapped[0]?.value ?? "");
-            setInner(initial);
-          }
-        } else {
-          // 后端返回空，保留后备选项，并基于 localStorage 初始化
-          const saved = typeof window !== "undefined" ? window.localStorage.getItem("SELECTED_MODEL_ID") : null;
-          const initial = saved && FALLBACK_MODELS.find(m => m.value === saved) ? saved : (FALLBACK_MODELS[0]?.value ?? "");
-          setInner(initial);
-        }
-      } catch (_) {
-        // 失败则使用后备选项，并尝试使用本地已保存值
-        const saved = typeof window !== "undefined" ? window.localStorage.getItem("SELECTED_MODEL_ID") : null;
-        const initial = saved && FALLBACK_MODELS.find(m => m.value === saved) ? saved : (FALLBACK_MODELS[0]?.value ?? "");
-        setInner(initial);
+        await modelService.init();
+        syncFromService();
       } finally {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
-    // 首次加载
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { unsub(); };
   }, []);
 
   // 
@@ -143,18 +131,11 @@ export const ModelPicker: FC = () => {
     if (!isOpen) return;
     setLoading(true);
     try {
-      const data = await modelService.list();
-      const arr: BackendModelItem[] = Array.isArray(data.models) ? data.models : [];
-      if (arr.length > 0) {
-        const mapped = arr.map((it) => {
-          const value = String(it.id);
-          const name = it.model_name || it.model || value;
-          return { name, value, icon: pickIcon(undefined, it.model) };
-        });
-        setOptions(mapped);
-        // 保持原有选择；若当前选择已不在新列表中，则回退为第一项
-        setInner((prev) => (mapped.find((m) => m.value === prev) ? prev : (mapped[0]?.value ?? prev)));
-      }
+      await modelService.refresh();
+      // 刷新后同步本地选项
+      const opts: ModelOption[] = modelService.getOptions();
+      const mapped = opts.map(o => ({ name: o.name, value: o.value, icon: ICONS[o.iconKey] || openai }));
+      setOptions(mapped);
     } catch (_) {
       // 忽略错误，保留现有选项
     } finally {
@@ -162,28 +143,24 @@ export const ModelPicker: FC = () => {
     }
   };
 
-  // 选择模型：调用 GET /api/models/{id} 验证可用性，成功则持久化选择
-  const handleChange = async (v: string) => {
-    // 先本地展示选择，但在失败时回滚
-    const prev = val;
+  // 选择模型：设置活跃模型，成功则持久化选择
+  const handleSelectChange = async (v: string) => {
     if (v === ADD_VALUE) {
-      // 打开创建弹窗，不改变当前选中
-      setOpen(true);
+      setDialogMode("add");
+      setForm({ model_name: "", model: "", base_url: "", api_key: "", model_description: "", model_avatar_url: "" });
+      setDialogOpen(true);
+      setEditingId(null);
       return;
     }
-    setInner(v);
+    const prev = selectedId;
+    setSelectedId(v);
     setLoading(true);
     try {
-      // 按 ID 调用 GET /api/models/{connection_id}，即为切换模型
-      await modelService.get(v);
-      // 持久化选择（供下次初始化时读取），保存 ID
-      if (typeof window !== "undefined") {
-        try { window.localStorage.setItem("SELECTED_MODEL_ID", v); } catch { }
-      }
+      await modelService.select(v);
+      // 成功后 service 会同步 selectedId，这里由订阅回填
     } catch (e) {
       console.error(e);
-      // 回滚显示
-      setInner(prev);
+      setSelectedId(prev);
     } finally {
       setLoading(false);
     }
@@ -201,22 +178,6 @@ export const ModelPicker: FC = () => {
     try {
       setDeletingId(id);
       await modelService.remove(id);
-      // 删除后刷新列表
-      setLoading(true);
-      try {
-        const data = await modelService.list();
-        const arr: BackendModelItem[] = Array.isArray(data.models) ? data.models : [];
-        if (arr.length > 0) {
-          const mapped = arr.map((it) => ({ name: it.model_name || it.model || String(it.id), value: String(it.id), icon: pickIcon(undefined, it.model) }));
-          setOptions(mapped);
-          setInner((prev) => (mapped.find((m) => m.value === prev) ? prev : (mapped[0]?.value ?? "")));
-        } else {
-          setOptions(FALLBACK_MODELS);
-          setInner(FALLBACK_MODELS[0]?.value ?? "");
-        }
-      } finally {
-        setLoading(false);
-      }
     } catch (err) {
       console.error(err);
       if (err instanceof NotFoundError) {
@@ -231,26 +192,38 @@ export const ModelPicker: FC = () => {
     }
   };
 
-  // 创建模型
-  const submitCreate = async () => {
+  // 新增/编辑模型
+  const submitDialog = async () => {
     if (!form.model?.trim()) {
       // 至少需要模型标识
       return;
     }
     setCreating(true);
     try {
-      const created = await modelService.create({
-        model_name: form.model_name || form.model,
-        model: form.model,
-        base_url: form.base_url,
-        api_key: form.api_key,
-        model_description: form.model_description,
-        model_avatar_url: form.model_avatar_url,
-      });
-      // 仅打印日志，不在前端静态追加或选择，列表将于下次展开下拉时自动刷新
-      console.log("Model created:", created);
-      setOpen(false);
+      if (dialogMode === "add") {
+        const created = await modelService.create({
+          model_name: form.model_name || form.model,
+          model: form.model,
+          base_url: form.base_url,
+          api_key: form.api_key,
+          model_description: form.model_description,
+          model_avatar_url: form.model_avatar_url,
+        });
+        console.log("Model created:", created);
+      } else if (dialogMode === "edit" && editingId) {
+        const updated = await modelService.update(editingId, {
+          model_name: form.model_name || form.model,
+          model: form.model,
+          base_url: form.base_url,
+          api_key: form.api_key,
+          model_description: form.model_description,
+          model_avatar_url: form.model_avatar_url,
+        }, "PUT");
+        console.log("Model updated:", updated);
+      }
+      setDialogOpen(false);
       setForm({ model_name: "", model: "", base_url: "", api_key: "", model_description: "", model_avatar_url: "" });
+      setEditingId(null);
     } catch (err) {
       console.error(err);
     } finally {
@@ -260,24 +233,67 @@ export const ModelPicker: FC = () => {
 
   return (
     <>
-      <Select value={val} onValueChange={handleChange} disabled={loading} onOpenChange={handleSelectOpenChange}>
-        <SelectTrigger className="max-w-[300px]" aria-busy={loading}>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {options.map((model) => (
-            <SelectItem key={model.value} value={model.value}>
-              <div className="flex w-full items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <Image src={model.icon} alt={model.name} className="inline size-4" />
-                  <span>{model.name}</span>
+      <Select value={selectedId} onValueChange={handleSelectChange} disabled={loading} onOpenChange={handleSelectOpenChange}>
+        <SelectTrigger className="w-full min-w-[150px] max-w-[480px]" aria-busy={loading}>
+          {/* 只显示选中项的图标和名称，不显示操作按钮 */}
+          {(() => {
+            const selected = options.find(o => o.value === selectedId);
+            return selected ? (
+              <div className="flex flex-row items-center px-2 whitespace-nowrap space-x-2">
+                <span className="relative h-5 w-5 shrink-0">
+                  <Image src={selected.icon} alt={selected.name} fill className="object-contain" />
                 </span>
-                <span className="flex items-center gap-2 pl-2">
+                <span className="min-w-0 truncate">{selected.name}</span>
+              </div>
+            ) : <SelectValue />;
+          })()}
+        </SelectTrigger>
+        <SelectContent className="min-w-[150px] max-w-[480px]">
+          {options.map((model) => (
+            <SelectItem
+              key={model.value}
+              value={model.value}
+              onSelect={(e) => {
+                // 如果本次触发来自“操作按钮区域”，则阻止该项被选中
+                if (actionClickRef.current) {
+                  e.preventDefault();
+                  (e as any).stopPropagation?.();
+                }
+              }}
+            >
+              <div className="flex w-full items-center justify-between">
+                <span className="flex flex-row items-center min-w-0 space-x-2">
+                  <span className="relative h-4 w-4 shrink-0">
+                    <Image src={model.icon} alt={model.name} fill className="object-contain" />
+                  </span>
+                  <span className="truncate">{model.name}</span>
+                </span>
+                <span
+                  className="flex items-center gap-2 pl-2"
+                  onPointerDownCapture={onActionPointerDownCapture}
+                >
+                  <button
+                    title="编辑"
+                    className="rounded p-1 text-muted-foreground hover:bg-primary/10 hover:text-primary disabled:opacity-50"
+                    onMouseDown={onBtnMouseOrPointerDown}
+                    onPointerDown={onBtnMouseOrPointerDown}
+                    onPointerUp={onBtnMouseOrPointerUp}
+                    onMouseUp={onBtnMouseOrPointerUp}
+                    onKeyDown={onBtnKeyDown}
+                    onClick={(e) => onEditClick(e, model.value)}
+                    disabled={loading}
+                  >
+                    <PlusIcon className="size-4" />
+                  </button>
                   <button
                     title="删除"
                     className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={(e) => handleDelete(e, model.value)}
+                    onMouseDown={onBtnMouseOrPointerDown}
+                    onPointerDown={onBtnMouseOrPointerDown}
+                    onPointerUp={onBtnMouseOrPointerUp}
+                    onMouseUp={onBtnMouseOrPointerUp}
+                    onKeyDown={onBtnKeyDown}
+                    onClick={(e) => onDeleteClick(e, model.value)}
                     disabled={deletingId === model.value || loading}
                   >
                     <Trash2Icon className="size-4" />
@@ -296,10 +312,10 @@ export const ModelPicker: FC = () => {
         </SelectContent>
       </Select>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>添加自定义模型</DialogTitle>
+            <DialogTitle>{dialogMode === "add" ? "添加自定义模型" : "编辑模型"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-3 py-2">
             <div className="grid gap-1">
@@ -328,8 +344,8 @@ export const ModelPicker: FC = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={creating}>取消</Button>
-            <Button onClick={submitCreate} disabled={creating || !form.model.trim()}>{creating ? "创建中..." : "创建"}</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={creating}>取消</Button>
+            <Button onClick={submitDialog} disabled={creating || !form.model.trim()}>{creating ? (dialogMode === "add" ? "创建中..." : "保存中...") : (dialogMode === "add" ? "创建" : "保存")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

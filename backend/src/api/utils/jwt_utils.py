@@ -1,15 +1,12 @@
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+from datetime import datetime, timedelta, timezone
+from typing import Optional
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+from passlib.hash import bcrypt
 from pydantic import BaseModel
 from src.config import get_settings
 import logging
 
 logger = logging.getLogger(__name__)
-
-# 密码加密上下文
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # JWT Payload 模型
 class JWTPayload(BaseModel):
@@ -40,7 +37,7 @@ class JWTManager:
     
     def create_access_token(self, user_id: str, email: str, expires_delta: Optional[timedelta] = None) -> str:
         """创建访问令牌"""
-        now = datetime.utcnow()
+        now = datetime.now()
         if expires_delta:
             expire = now + expires_delta
         else:
@@ -56,12 +53,12 @@ class JWTManager:
         # 转换为字典进行编码
         to_encode = payload.model_dump()
         encoded_jwt = jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
-        logger.info(f"创建访问令牌成功，用户ID: {user_id}")
+        logger.debug(f"create access token successfully, user ID: {user_id}")
         return encoded_jwt
     
     def create_refresh_token(self, user_id: str, email: str) -> str:
         """创建刷新令牌"""
-        now = datetime.utcnow()
+        now = datetime.now()
         expire = now + timedelta(days=self.refresh_token_expire_days)
         
         payload = RefreshTokenPayload(
@@ -74,7 +71,7 @@ class JWTManager:
         # 转换为字典进行编码
         to_encode = payload.model_dump()
         encoded_jwt = jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
-        logger.info(f"创建刷新令牌成功，用户ID: {user_id}")
+        logger.debug(f"create refresh token successfully, user ID: {user_id}")
         return encoded_jwt
     
     def verify_token(self, token: str, token_type: str = "access") -> Optional[JWTPayload]:
@@ -84,17 +81,17 @@ class JWTManager:
             
             # 检查令牌类型
             if payload_dict.get("type") != token_type:
-                logger.warning(f"令牌类型不匹配，期望: {token_type}, 实际: {payload_dict.get('type')}")
+                logger.warning(f"token type mismatch, expected: {token_type}, actual: {payload_dict.get('type')}")
                 return None
             
             # 检查过期时间
             exp = payload_dict.get("exp")
             if exp is None:
-                logger.warning("令牌缺少过期时间")
+                logger.warning("token missing expiration time")
                 return None
             
-            if datetime.utcnow() > datetime.utcfromtimestamp(exp):
-                logger.warning("令牌已过期")
+            if datetime.now() > datetime.fromtimestamp(exp):
+                logger.warning("token expired")
                 return None
             
             # 创建类型化的payload对象
@@ -105,24 +102,24 @@ class JWTManager:
             else:
                 payload = JWTPayload(**payload_dict)
             
-            logger.info(f"令牌验证成功，用户ID: {payload.sub}")
+            logger.debug(f"token verification successful, user ID: {payload.sub}")
             return payload
             
         except JWTError as e:
-            logger.error(f"令牌验证失败: {e}")
+            logger.error(f"token verification failed: {e}")
             return None
         except Exception as e:
-            logger.error(f"令牌解析失败: {e}")
+            logger.error(f"token parsing failed: {e}")
             return None
     
     def get_user_id_from_token(self, token: str) -> Optional[int]:
-        """从令牌中获取用户ID"""
+        """从token中获取用户ID"""
         payload = self.verify_token(token)
         if payload:
             try:
                 return int(payload.sub)
             except (ValueError, TypeError):
-                logger.error(f"无效的用户ID格式: {payload.sub}")
+                logger.error(f"invalid user ID format: {payload.sub}")
         return None
 
 class PasswordManager:
@@ -131,19 +128,27 @@ class PasswordManager:
     @staticmethod
     def hash_password(password: str) -> str:
         """哈希密码"""
-        hashed = pwd_context.hash(password)
-        logger.info("密码哈希成功")
-        return hashed
+        try:
+            # 检查密码长度，bcrypt限制为72字节
+            if len(password.encode('utf-8')) > 72:
+                logger.warning(f"password too long, truncating to 72 bytes. Original length: {len(password.encode('utf-8'))}")
+                password = password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
+            
+            hashed = bcrypt.hash(password)
+            return hashed
+        except Exception as e:
+            logger.error(f"failed to hash password: {e}, password: {password}, length: {len(password)}")
+            raise
     
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         """验证密码"""
-        is_valid = pwd_context.verify(plain_password, hashed_password)
-        if is_valid:
-            logger.info("密码验证成功")
-        else:
-            logger.warning("密码验证失败")
-        return is_valid
+        try:
+            is_valid = bcrypt.verify(plain_password, hashed_password)
+            return is_valid
+        except Exception as e:
+            logger.error(f"failed to verify password: {e}")
+            raise
 
 # 创建全局实例
 jwt_manager = JWTManager()
