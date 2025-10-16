@@ -2,6 +2,9 @@ from typing import Optional, Dict, Any
 import re
 import logging
 from src.graph.state import SQLState
+from langgraph.config import get_stream_writer
+from langchain_core.messages import AIMessageChunk
+from src.schemas.stream_chunk import Chunk
 
 logger = logging.getLogger(__name__)
 
@@ -204,7 +207,7 @@ def final_report_node(state: SQLState) -> SQLState:
     return state
 
 
-def generate_optimization_plans(state: SQLState) -> SQLState:
+async def generate_optimization_plans(state: SQLState) -> SQLState:
     """
     LLM Node: GenerateOptimizationPlans
     生成多个SQL优化方案
@@ -268,7 +271,7 @@ def generate_optimization_plans(state: SQLState) -> SQLState:
 
     try:
         llm = state.get("llm")
-        content = llm.chat(messages)
+        content = await llm.chat_async(messages)
         
         # 提取JSON部分
         import re
@@ -300,6 +303,15 @@ def generate_optimization_plans(state: SQLState) -> SQLState:
         
         if plans:
             state["optimized_sql"] = plans[0]["optimized_sql"]
+
+        # 末尾换行
+        try:
+            writer = get_stream_writer()
+            chunk = (AIMessageChunk(content="\n"), {"langgraph_node": "generate_plans"})
+            writer(chunk)
+        except Exception as e:
+            logger.error(f"Error in writing custom chunk: {e}")
+            pass
         
         # state.setdefault("history", []).append(f"[generate_plans] 已生成 {len(plans)} 个优化方案")
         

@@ -42,12 +42,12 @@ def init_admin_user():
 
         # 初始化默认连接
         database_connection_repository = DatabaseConnectionRepository()
-        if not database_connection_repository.get_by_name("default"):
+        if not database_connection_repository.get_by_name("opentenbase"):
             req = CreateDatabaseConnectionReq(
-                database_name="default",
+                database_name="opentenbase",
                 database_uri=f"mysql://{settings.mysql_user}:{settings.mysql_password or ''}@{settings.mysql_host}:{settings.mysql_port}/{settings.mysql_database}",
                 database_type="mysql",
-                database_description="default",
+                database_description="opentenbase",
                 user_id=user_id
             )
             database_connection_repository.create(req)
@@ -72,14 +72,14 @@ def init_admin_user():
 
         # 初始化默认schema
         db_schema_repository = DbSchemaRepository()
-        if not db_schema_repository.get_by_name("default"):
+        if not db_schema_repository.get_by_name("tpch"):
             schema_path = find_file_in_project("schema.sql")
             
             if schema_path:
                 with open(schema_path, mode="r", encoding="utf-8") as f:
                     schema_content = f.read()
                 req = CreateDbSchemaReq(
-                    schema_name="default",
+                    schema_name="tpch",
                     schema_content=schema_content,
                     user_id=user_id
                 )

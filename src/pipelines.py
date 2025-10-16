@@ -109,11 +109,18 @@ async def execute_pipeline_stream(
 
     app = build_sqlopt_graph()
     init_state = build_initial_state(input_state)
+
+    filter_nodes = ["get_stats","check_equivalence"]
+    stream_mode = ["messages","custom"]
     try:
-        async for message_chunk, metadata in app.astream(init_state, stream_mode="messages"):
+        async for mode, chunk in app.astream(init_state, stream_mode=stream_mode):
+            message_chunk = chunk[0]
+            metadata = chunk[1]
+            if metadata.get("langgraph_node") in filter_nodes:
+                continue
             yield message_chunk, metadata
     except Exception as e:
-        logger.error(f"Error in execute_pipeline_stream: {e}")
+        logger.error(f"Error in execute_pipeline_stream: {e}, chunk: {chunk}")
         # 发送错误消息
         error_message = create_error_message(str(e), get_unix_timestamp())
         yield error_message, {"error": True}

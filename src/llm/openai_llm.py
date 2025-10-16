@@ -5,22 +5,25 @@ from src.llm.client import LLMClient
 
 
 class OpenAILLMClient(LLMClient):
-    def __init__(self) -> None:
+    def __init__(self, model: str, base_url: str, api_key: str) -> None:
+        self._model = model
+        self._base_url = base_url
+        self._api_key = api_key
+
         settings = get_settings()
         
         self._client = OpenAI(
-            api_key=settings.api_key or "EMPTY_KEY",
-            base_url=settings.base_url,
+            api_key=self._api_key or "EMPTY_KEY",
+            base_url=self._base_url,
             timeout=settings.request_timeout,
         )
         
         self._client_async = AsyncOpenAI(
-            api_key=settings.api_key or "EMPTY_KEY",
-            base_url=settings.base_url,
+            api_key=self._api_key or "EMPTY_KEY",
+            base_url=self._base_url,
             timeout=settings.request_timeout,
         )
         
-        self._model = settings.model
 
     def chat(
         self,
@@ -29,8 +32,7 @@ class OpenAILLMClient(LLMClient):
         max_tokens: Optional[int] = None,
         state: Optional[TypedDict] = None,
     ) -> str:
-        settings = get_settings()
-        if not settings.api_key or settings.api_key == "EMPTY_KEY":
+        if not self._api_key or self._api_key == "EMPTY_KEY":
             raise RuntimeError("OPENAI_API_KEY 未设置，请先在环境变量或 .env 中配置。")
         
         try:
@@ -53,8 +55,7 @@ class OpenAILLMClient(LLMClient):
         state: Optional[TypedDict] = None,
     ) -> str:
         """异步调用 LLM"""
-        settings = get_settings()
-        if not settings.api_key or settings.api_key == "EMPTY_KEY":
+        if not self._api_key or self._api_key == "EMPTY_KEY":
             raise RuntimeError("OPENAI_API_KEY 未设置，请先在环境变量或 .env 中配置。")
 
         try:
