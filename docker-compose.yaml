@@ -1,0 +1,21 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - data:/app/data
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    networks:
+      - sqloptimize-network
+
+volumes:
+  data:
+    driver: local
+
+networks:
+  sqloptimize-network:
+    driver: bridge

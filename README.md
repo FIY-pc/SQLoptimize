@@ -40,6 +40,13 @@ uv run -m src.main "SELECT id, name FROM t1 WHERE status = 'ok' UNION ALL SELECT
 uv run uvicorn src.api:app --reload
 ```
 
+使用docker
+```bash
+# 1. 根据.env.example在仓库根目录配置.env
+# 2. 拉起服务(默认开了持久化，需要完全刷新数据可以把volume删掉)
+docker compose up -d
+```
+
 # 开发指南
 
 ## 添加依赖
