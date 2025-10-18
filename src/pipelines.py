@@ -12,8 +12,10 @@ import sqlite3
 from src.api.repository import DbSchemaRepository, ModelConnectionRepository, DatabaseConnectionRepository
 logger = logging.getLogger(__name__)
 
-# 供 CLI 用的执行函数
 async def execute_pipeline_cli(sql: str, db_schema: Optional[str] = None) -> State:
+    """
+    供 CLI 用的执行函数
+    """
     settings = get_settings()
     
     llm = get_llm()
@@ -32,49 +34,13 @@ async def execute_pipeline_cli(sql: str, db_schema: Optional[str] = None) -> Sta
     final_state: State = await app.ainvoke(init_state)  # type: ignore
     return final_state
 
-# 供 API 用的执行函数
-async def execute_pipeline_api(
+async def build_input_state(
     sql: str, 
     user_id: int = 0
-) -> State:
-    db_schema_repo = DbSchemaRepository()
-    model_repo = ModelConnectionRepository()
-    db_conn_repo = DatabaseConnectionRepository()
-
-    active_db_schema = db_schema_repo.get_active_by_user_id(user_id)
-    active_model = model_repo.get_active_by_user_id(user_id)
-    active_db_conn = db_conn_repo.get_active_by_user_id(user_id)
-
-    settings = get_settings()
-    llm = LangchainLLMClient(
-        model=active_model.model,
-        base_url=active_model.base_url,
-        api_key=active_model.api_key
-    )
-    mysql_utils = MySQLUtils(
-        database_url=active_db_conn.database_uri
-    )
-
-    fallback_sqlite = sqlite3.connect(settings.db_path)
-    
-    input_state = InputState(
-        sql=sql, 
-        db_schema=active_db_schema.schema_content,
-        llm=llm,
-        mysql_utils=mysql_utils,
-        fallback_sqlite=fallback_sqlite
-    )
-
-    app = build_sqlopt_graph()
-    init_state = build_initial_state(input_state)
-    final_state: State = await app.ainvoke(init_state)
-    return final_state
-
-# 流式输出版执行函数
-async def execute_pipeline_stream(
-    sql: str, 
-    user_id: int = 0
-):
+) -> InputState:
+    """
+    构建输入状态
+    """
     db_schema_repo = DbSchemaRepository()
     model_repo = ModelConnectionRepository()
     db_conn_repo = DatabaseConnectionRepository()
@@ -102,14 +68,38 @@ async def execute_pipeline_stream(
     input_state = InputState(
         sql=sql, 
         db_schema=active_db_schema.schema_content,
+        database=active_db_conn.database(),
         llm=llm,
         mysql_utils=mysql_utils,
         fallback_sqlite=fallback_sqlite
     )
+    return input_state
 
-    app = build_sqlopt_graph()
+async def execute_pipeline_api(
+    sql: str, 
+    user_id: int = 0
+) -> State:
+    """
+    供 API 用的执行函数
+    """
+    input_state = await build_input_state(sql, user_id)
     init_state = build_initial_state(input_state)
 
+    app = build_sqlopt_graph()
+    final_state: State = await app.ainvoke(init_state)
+    return final_state
+
+async def execute_pipeline_stream(
+    sql: str, 
+    user_id: int = 0
+):
+    """
+    供 API 用的流式执行函数
+    """
+    input_state = await build_input_state(sql, user_id)
+    init_state = build_initial_state(input_state)
+
+    app = build_sqlopt_graph()
     filter_nodes = ["get_stats","check_equivalence"]
     stream_mode = ["messages","custom"]
     try:

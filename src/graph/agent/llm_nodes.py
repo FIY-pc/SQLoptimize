@@ -189,7 +189,7 @@ def final_report_node(state: SQLState) -> SQLState:
                 f"优化方案比较:\n{plans_info}\n\n"
                 "请提供一份详细的优化报告，包括:\n"
                 "1. 原始SQL的问题分析\n"
-                "2. 各个优化方案的比较和成本对比\n\n"
+                "2. 各个优化方案的比较和成本对比，注意：必须根据优化方案比较中的成本对比输出改写前后的query_cost值\n\n"
                 "请以Markdown格式返回报告。"
             ),
         },

@@ -23,3 +23,6 @@ class DatabaseConnection(Base):
     # 外键关联用户
     user_id = Column(Integer, ForeignKey("users.id"))
     user = relationship("User", back_populates="database_connections", foreign_keys=[user_id])
+
+    def database(self) -> str:
+        return self.database_uri.split("/")[-1]
