@@ -161,13 +161,15 @@ const defaultComponents = memoizeMarkdownComponents({
     <hr className={cn("aui-md-hr my-5 border-b", className)} {...props} />
   ),
   table: ({ className, ...props }) => (
-    <table
-      className={cn(
-        "aui-md-table my-5 w-full border-separate border-spacing-0 overflow-y-auto overflow-x-auto",
-        className,
-      )}
-      {...props}
-    />
+    <div style={{ overflowX: "auto" }}>
+      <table
+        className={cn(
+          "aui-md-table my-5 w-full border-separate border-spacing-0",
+          className,
+        )}
+        {...props}
+      />
+    </div>
   ),
   th: ({ className, ...props }) => (
     <th
@@ -217,7 +219,7 @@ const defaultComponents = memoizeMarkdownComponents({
       <code
         className={cn(
           !isCodeBlock &&
-            "aui-md-inline-code rounded border bg-muted font-semibold",
+          "aui-md-inline-code rounded border bg-muted font-semibold",
           className,
         )}
         {...props}
