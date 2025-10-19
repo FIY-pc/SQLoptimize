@@ -11,6 +11,9 @@ Desktop.ini
 *.swp
 *.swo
 
+zkf/
+tpcds1/
+
 # --- Node / Next.js (frontend) ---
 node_modules/
 .next/

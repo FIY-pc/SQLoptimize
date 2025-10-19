@@ -6,6 +6,7 @@ from src.utils.mysql_utils import MySQLUtils
 class InputState(TypedDict, total=False):
     sql: str
     db_schema: Optional[str]
+    database: Optional[str]
     max_iterations: int
     llm: LLMClient
     mysql_utils: MySQLUtils
@@ -24,6 +25,7 @@ class SQLState(MessagesState, total=False):
     # 输入与上下文
     sql: str
     db_schema: Optional[str]
+    database: Optional[str]
     # history: List[str]
 
     # 查询计划、统计信息
@@ -59,6 +61,7 @@ def build_initial_state(
         "messages": [],
         "sql": input_state.get("sql"),
         "db_schema": input_state.get("db_schema"),
+        "database": input_state.get("database"),
         # "history": [],
         "plan": "",
         "stats": {},

@@ -1,0 +1,2510 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SQLoptimize API",
+    "description": "SQLoptimize API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/optimize": {
+      "post": {
+        "tags": [
+          "ai"
+        ],
+        "summary": "调用agent优化SQL",
+        "operationId": "optimize_api_optimize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OptimizeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "用户注册",
+        "description": "用户注册",
+        "operationId": "register_api_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "用户登录",
+        "description": "用户登录",
+        "operationId": "login_api_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "刷新访问令牌",
+        "description": "刷新访问令牌",
+        "operationId": "refresh_token_api_auth_refresh_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshTokenResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/change-password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "修改密码",
+        "description": "修改密码",
+        "operationId": "change_password_api_auth_change_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/models/active": {
+      "get": {
+        "tags": [
+          "models"
+        ],
+        "summary": "获取用户当前活跃的模型连接",
+        "description": "获取用户当前活跃的模型连接",
+        "operationId": "get_active_model_connection_api_models_active_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActiveModelConnectionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "models"
+        ],
+        "summary": "设置用户当前活跃的模型连接",
+        "description": "设置用户当前活跃的模型连接",
+        "operationId": "set_active_model_connection_api_models_active_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetActiveModelConnectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetActiveModelConnectionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/models/": {
+      "get": {
+        "tags": [
+          "models"
+        ],
+        "summary": "获取用户模型连接列表",
+        "description": "获取当前用户的模型连接列表",
+        "operationId": "get_user_models_api_models__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "model",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Model"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelConnectionListResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "models"
+        ],
+        "summary": "创建模型连接",
+        "description": "创建新的模型连接",
+        "operationId": "create_model_connection_api_models__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelConnectionCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelConnectionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/models/{connection_id}": {
+      "get": {
+        "tags": [
+          "models"
+        ],
+        "summary": "根据ID获取模型连接",
+        "description": "获取指定的模型连接信息",
+        "operationId": "get_model_connection_api_models__connection_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelConnectionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "models"
+        ],
+        "summary": "更新模型连接",
+        "description": "更新模型连接信息",
+        "operationId": "update_model_connection_api_models__connection_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelConnectionUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelConnectionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "models"
+        ],
+        "summary": "删除模型连接",
+        "description": "删除模型连接",
+        "operationId": "delete_model_connection_api_models__connection_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/databases/active": {
+      "get": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "获取用户当前活跃的数据库连接",
+        "description": "获取用户当前活跃的数据库连接",
+        "operationId": "get_active_database_connection_api_databases_active_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActiveDatabaseConnectionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "设置用户当前活跃的数据库连接",
+        "description": "设置用户当前活跃的数据库连接",
+        "operationId": "set_active_database_connection_api_databases_active_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetActiveDatabaseConnectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetActiveDatabaseConnectionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/databases/": {
+      "get": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "获取用户数据库连接列表",
+        "description": "获取当前用户的数据库连接列表",
+        "operationId": "get_user_databases_api_databases__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "database_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Database Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatabaseConnectionListResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "创建数据库连接",
+        "description": "创建新的数据库连接",
+        "operationId": "create_database_connection_api_databases__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatabaseConnectionCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatabaseConnectionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/databases/{connection_id}": {
+      "get": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "根据ID获取数据库连接",
+        "description": "获取指定的数据库连接信息",
+        "operationId": "get_database_connection_api_databases__connection_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatabaseConnectionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "更新数据库连接",
+        "description": "更新数据库连接信息",
+        "operationId": "update_database_connection_api_databases__connection_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatabaseConnectionUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatabaseConnectionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "删除数据库连接",
+        "description": "删除数据库连接",
+        "operationId": "delete_database_connection_api_databases__connection_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatabaseConnectionDeleteResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/databases/{connection_id}/test": {
+      "post": {
+        "tags": [
+          "databases"
+        ],
+        "summary": "测试数据库连接",
+        "description": "测试数据库连接",
+        "operationId": "test_database_connection_api_databases__connection_id__test_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatabaseConnectionTestResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/schemas/active": {
+      "get": {
+        "tags": [
+          "schemas"
+        ],
+        "summary": "获取用户当前活跃的数据库模式",
+        "description": "获取用户当前活跃的数据库模式",
+        "operationId": "get_active_db_schema_api_schemas_active_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActiveDbSchemaResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "schemas"
+        ],
+        "summary": "设置用户当前活跃的数据库模式",
+        "description": "设置用户当前活跃的数据库模式",
+        "operationId": "set_active_db_schema_api_schemas_active_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetActiveDbSchemaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetActiveDbSchemaResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/schemas/": {
+      "get": {
+        "tags": [
+          "schemas"
+        ],
+        "summary": "获取用户数据库模式列表",
+        "description": "获取当前用户的数据库模式列表",
+        "operationId": "get_user_schemas_api_schemas__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DbSchemaListResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "schemas"
+        ],
+        "summary": "创建数据库模式",
+        "description": "创建新的数据库模式",
+        "operationId": "create_db_schema_api_schemas__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DbSchemaCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DbSchemaResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/schemas/{schema_id}": {
+      "get": {
+        "tags": [
+          "schemas"
+        ],
+        "summary": "根据ID获取数据库模式",
+        "description": "获取指定的数据库模式信息",
+        "operationId": "get_db_schema_api_schemas__schema_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "schema_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Schema Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DbSchemaResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "schemas"
+        ],
+        "summary": "更新数据库模式",
+        "description": "更新数据库模式信息",
+        "operationId": "update_db_schema_api_schemas__schema_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "schema_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Schema Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DbSchemaUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DbSchemaResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "schemas"
+        ],
+        "summary": "删除数据库模式",
+        "description": "删除数据库模式",
+        "operationId": "delete_db_schema_api_schemas__schema_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "schema_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Schema Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DbSchemaDeleteResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ping": {
+      "get": {
+        "summary": "健康检查",
+        "operationId": "ping_api_ping_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActiveDatabaseConnectionResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "数据库连接ID"
+          },
+          "database_name": {
+            "type": "string",
+            "title": "Database Name",
+            "description": "用户自定义的数据库名称"
+          },
+          "database_uri": {
+            "type": "string",
+            "title": "Database Uri",
+            "description": "数据库连接URI"
+          },
+          "database_type": {
+            "type": "string",
+            "title": "Database Type",
+            "description": "数据库类型"
+          },
+          "database_description": {
+            "type": "string",
+            "title": "Database Description",
+            "description": "数据库描述"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At",
+            "description": "创建时间"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At",
+            "description": "更新时间"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "database_name",
+          "database_uri",
+          "database_type",
+          "database_description",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ActiveDatabaseConnectionResponse",
+        "description": "活跃数据库连接响应"
+      },
+      "ActiveDbSchemaResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "模式ID"
+          },
+          "schema_name": {
+            "type": "string",
+            "title": "Schema Name",
+            "description": "模式名称"
+          },
+          "schema_content": {
+            "type": "string",
+            "title": "Schema Content",
+            "description": "模式内容"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At",
+            "description": "创建时间"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At",
+            "description": "更新时间"
+          },
+          "user_id": {
+            "type": "integer",
+            "title": "User Id",
+            "description": "用户ID"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "schema_name",
+          "schema_content",
+          "created_at",
+          "updated_at",
+          "user_id"
+        ],
+        "title": "ActiveDbSchemaResponse",
+        "description": "活跃数据库模式响应"
+      },
+      "ActiveModelConnectionResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "模型连接ID"
+          },
+          "model_name": {
+            "type": "string",
+            "title": "Model Name",
+            "description": "用户自定义的模型名称"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "description": "模型名称"
+          },
+          "base_url": {
+            "type": "string",
+            "title": "Base Url",
+            "description": "模型API地址"
+          },
+          "api_key": {
+            "type": "string",
+            "title": "Api Key",
+            "description": "混淆后的模型API密钥"
+          },
+          "model_description": {
+            "type": "string",
+            "title": "Model Description",
+            "description": "模型描述"
+          },
+          "model_avatar_url": {
+            "type": "string",
+            "title": "Model Avatar Url",
+            "description": "模型头像URL"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At",
+            "description": "创建时间"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At",
+            "description": "更新时间"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "model_name",
+          "model",
+          "base_url",
+          "api_key",
+          "model_description",
+          "model_avatar_url",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ActiveModelConnectionResponse",
+        "description": "活跃模型连接响应"
+      },
+      "ChangePasswordRequest": {
+        "properties": {
+          "old_password": {
+            "type": "string",
+            "title": "Old Password",
+            "description": "旧密码"
+          },
+          "new_password": {
+            "type": "string",
+            "title": "New Password",
+            "description": "新密码"
+          }
+        },
+        "type": "object",
+        "required": [
+          "old_password",
+          "new_password"
+        ],
+        "title": "ChangePasswordRequest"
+      },
+      "DatabaseConnectionCreate": {
+        "properties": {
+          "database_name": {
+            "type": "string",
+            "title": "Database Name",
+            "description": "用户自定义的数据库名称"
+          },
+          "database_uri": {
+            "type": "string",
+            "title": "Database Uri",
+            "description": "数据库连接URI"
+          },
+          "database_type": {
+            "type": "string",
+            "title": "Database Type",
+            "description": "数据库类型",
+            "default": "opentenbase"
+          },
+          "database_description": {
+            "type": "string",
+            "title": "Database Description",
+            "description": "数据库描述",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "database_name",
+          "database_uri"
+        ],
+        "title": "DatabaseConnectionCreate",
+        "description": "创建数据库连接请求"
+      },
+      "DatabaseConnectionDeleteResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "删除结果消息"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "DatabaseConnectionDeleteResponse",
+        "description": "数据库连接删除响应"
+      },
+      "DatabaseConnectionListResponse": {
+        "properties": {
+          "databases": {
+            "items": {
+              "$ref": "#/components/schemas/DatabaseConnectionResponse"
+            },
+            "type": "array",
+            "title": "Databases",
+            "description": "数据库连接列表"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "总数"
+          },
+          "skip": {
+            "type": "integer",
+            "title": "Skip",
+            "description": "跳过数量"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit",
+            "description": "限制数量"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More",
+            "description": "是否还有更多数据"
+          },
+          "active_connection_id": {
+            "type": "integer",
+            "title": "Active Connection Id",
+            "description": "当前用户活跃的数据库连接ID，0表示无活跃连接",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "databases",
+          "total",
+          "skip",
+          "limit",
+          "has_more"
+        ],
+        "title": "DatabaseConnectionListResponse",
+        "description": "数据库连接列表响应"
+      },
+      "DatabaseConnectionResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "数据库连接ID"
+          },
+          "database_name": {
+            "type": "string",
+            "title": "Database Name",
+            "description": "用户自定义的数据库名称"
+          },
+          "database_uri": {
+            "type": "string",
+            "title": "Database Uri",
+            "description": "数据库连接URI"
+          },
+          "database_type": {
+            "type": "string",
+            "title": "Database Type",
+            "description": "数据库类型"
+          },
+          "database_description": {
+            "type": "string",
+            "title": "Database Description",
+            "description": "数据库描述"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At",
+            "description": "创建时间"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At",
+            "description": "更新时间"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "database_name",
+          "database_uri",
+          "database_type",
+          "database_description",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "DatabaseConnectionResponse",
+        "description": "数据库连接响应"
+      },
+      "DatabaseConnectionTestResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "测试结果消息"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "测试状态：success/failed"
+          },
+          "response_time": {
+            "type": "number",
+            "title": "Response Time",
+            "description": "响应时间"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message",
+          "status",
+          "response_time"
+        ],
+        "title": "DatabaseConnectionTestResponse",
+        "description": "数据库连接测试响应"
+      },
+      "DatabaseConnectionUpdate": {
+        "properties": {
+          "database_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Database Name",
+            "description": "用户自定义的数据库名称"
+          },
+          "database_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Database Uri",
+            "description": "数据库连接URI"
+          },
+          "database_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Database Type",
+            "description": "数据库类型"
+          },
+          "database_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Database Description",
+            "description": "数据库描述"
+          }
+        },
+        "type": "object",
+        "title": "DatabaseConnectionUpdate",
+        "description": "更新数据库连接请求"
+      },
+      "DbSchemaCreate": {
+        "properties": {
+          "schema_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Name",
+            "description": "模式名称，不提供则自动生成UUID"
+          },
+          "schema_content": {
+            "type": "string",
+            "title": "Schema Content",
+            "description": "模式内容（JSON字符串）"
+          }
+        },
+        "type": "object",
+        "required": [
+          "schema_content"
+        ],
+        "title": "DbSchemaCreate",
+        "description": "创建数据库模式请求"
+      },
+      "DbSchemaDeleteResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "删除结果消息"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "DbSchemaDeleteResponse",
+        "description": "数据库模式删除响应"
+      },
+      "DbSchemaListResponse": {
+        "properties": {
+          "schemas": {
+            "items": {
+              "$ref": "#/components/schemas/DbSchemaResponse"
+            },
+            "type": "array",
+            "title": "Schemas",
+            "description": "模式列表"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "总数"
+          },
+          "skip": {
+            "type": "integer",
+            "title": "Skip",
+            "description": "跳过数量"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit",
+            "description": "限制数量"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More",
+            "description": "是否还有更多数据"
+          },
+          "active_schema_id": {
+            "type": "integer",
+            "title": "Active Schema Id",
+            "description": "当前用户活跃的数据库模式ID，0表示无活跃模式",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "schemas",
+          "total",
+          "skip",
+          "limit",
+          "has_more"
+        ],
+        "title": "DbSchemaListResponse",
+        "description": "数据库模式列表响应"
+      },
+      "DbSchemaResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "模式ID"
+          },
+          "schema_name": {
+            "type": "string",
+            "title": "Schema Name",
+            "description": "模式名称"
+          },
+          "schema_content": {
+            "type": "string",
+            "title": "Schema Content",
+            "description": "模式内容"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At",
+            "description": "创建时间"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At",
+            "description": "更新时间"
+          },
+          "user_id": {
+            "type": "integer",
+            "title": "User Id",
+            "description": "用户ID"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "schema_name",
+          "schema_content",
+          "created_at",
+          "updated_at",
+          "user_id"
+        ],
+        "title": "DbSchemaResponse",
+        "description": "数据库模式响应"
+      },
+      "DbSchemaUpdate": {
+        "properties": {
+          "schema_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Name",
+            "description": "模式名称"
+          },
+          "schema_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Content",
+            "description": "模式内容（JSON字符串）"
+          }
+        },
+        "type": "object",
+        "title": "DbSchemaUpdate",
+        "description": "更新数据库模式请求"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "LoginRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email",
+            "description": "邮箱"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password",
+            "description": "密码"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "LoginRequest"
+      },
+      "LoginResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token",
+            "description": "访问令牌"
+          },
+          "refresh_token": {
+            "type": "string",
+            "title": "Refresh Token",
+            "description": "刷新令牌"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "description": "令牌类型",
+            "default": "bearer"
+          },
+          "user_id": {
+            "type": "integer",
+            "title": "User Id",
+            "description": "用户ID"
+          },
+          "user_name": {
+            "type": "string",
+            "title": "User Name",
+            "description": "用户名"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "refresh_token",
+          "user_id",
+          "user_name"
+        ],
+        "title": "LoginResponse"
+      },
+      "ModelConnectionCreate": {
+        "properties": {
+          "model_name": {
+            "type": "string",
+            "title": "Model Name",
+            "description": "用户自定义的模型名称"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "description": "模型名称"
+          },
+          "base_url": {
+            "type": "string",
+            "title": "Base Url",
+            "description": "模型API地址"
+          },
+          "api_key": {
+            "type": "string",
+            "title": "Api Key",
+            "description": "模型API密钥"
+          },
+          "model_description": {
+            "type": "string",
+            "title": "Model Description",
+            "description": "模型描述",
+            "default": ""
+          },
+          "model_avatar_url": {
+            "type": "string",
+            "title": "Model Avatar Url",
+            "description": "模型头像URL",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "model_name",
+          "model",
+          "base_url",
+          "api_key"
+        ],
+        "title": "ModelConnectionCreate",
+        "description": "创建模型连接请求"
+      },
+      "ModelConnectionListResponse": {
+        "properties": {
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/ModelConnectionResponse"
+            },
+            "type": "array",
+            "title": "Models",
+            "description": "模型连接列表"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "总数"
+          },
+          "skip": {
+            "type": "integer",
+            "title": "Skip",
+            "description": "跳过数量"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit",
+            "description": "限制数量"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More",
+            "description": "是否还有更多数据"
+          },
+          "active_connection_id": {
+            "type": "integer",
+            "title": "Active Connection Id",
+            "description": "当前用户活跃的模型连接ID，0表示无活跃连接",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "models",
+          "total",
+          "skip",
+          "limit",
+          "has_more"
+        ],
+        "title": "ModelConnectionListResponse",
+        "description": "模型连接列表响应"
+      },
+      "ModelConnectionResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "模型连接ID"
+          },
+          "model_name": {
+            "type": "string",
+            "title": "Model Name",
+            "description": "用户自定义的模型名称"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "description": "模型名称"
+          },
+          "base_url": {
+            "type": "string",
+            "title": "Base Url",
+            "description": "模型API地址"
+          },
+          "api_key": {
+            "type": "string",
+            "title": "Api Key",
+            "description": "混淆后的模型API密钥"
+          },
+          "model_description": {
+            "type": "string",
+            "title": "Model Description",
+            "description": "模型描述"
+          },
+          "model_avatar_url": {
+            "type": "string",
+            "title": "Model Avatar Url",
+            "description": "模型头像URL"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At",
+            "description": "创建时间"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At",
+            "description": "更新时间"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "model_name",
+          "model",
+          "base_url",
+          "api_key",
+          "model_description",
+          "model_avatar_url",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ModelConnectionResponse",
+        "description": "模型连接响应"
+      },
+      "ModelConnectionUpdate": {
+        "properties": {
+          "model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Name",
+            "description": "用户自定义的模型名称"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model",
+            "description": "模型名称"
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url",
+            "description": "模型API地址"
+          },
+          "api_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key",
+            "description": "模型API密钥"
+          },
+          "model_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Description",
+            "description": "模型描述"
+          },
+          "model_avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Avatar Url",
+            "description": "模型头像URL"
+          }
+        },
+        "type": "object",
+        "title": "ModelConnectionUpdate",
+        "description": "更新模型连接请求"
+      },
+      "OptimizeRequest": {
+        "properties": {
+          "sql": {
+            "type": "string",
+            "title": "Sql",
+            "description": "SQL语句"
+          },
+          "db_schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Db Schema",
+            "description": "数据库 schema",
+            "default": ""
+          },
+          "stream": {
+            "type": "boolean",
+            "title": "Stream",
+            "description": "是否流式输出",
+            "default": false
+          },
+          "stream_llm_chunk": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stream Llm Chunk",
+            "description": "是否流式输出 LLM 的 chunk",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "sql"
+        ],
+        "title": "OptimizeRequest"
+      },
+      "RefreshTokenRequest": {
+        "properties": {
+          "refresh_token": {
+            "type": "string",
+            "title": "Refresh Token",
+            "description": "刷新令牌"
+          }
+        },
+        "type": "object",
+        "required": [
+          "refresh_token"
+        ],
+        "title": "RefreshTokenRequest"
+      },
+      "RefreshTokenResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token",
+            "description": "访问令牌"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "description": "令牌类型",
+            "default": "bearer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token"
+        ],
+        "title": "RefreshTokenResponse"
+      },
+      "RegisterRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "用户名"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email",
+            "description": "邮箱"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password",
+            "description": "密码"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "email",
+          "password"
+        ],
+        "title": "RegisterRequest"
+      },
+      "SetActiveDatabaseConnectionRequest": {
+        "properties": {
+          "connection_id": {
+            "type": "integer",
+            "title": "Connection Id",
+            "description": "数据库连接ID"
+          }
+        },
+        "type": "object",
+        "required": [
+          "connection_id"
+        ],
+        "title": "SetActiveDatabaseConnectionRequest",
+        "description": "设置活跃数据库连接请求"
+      },
+      "SetActiveDatabaseConnectionResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "设置结果消息"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "SetActiveDatabaseConnectionResponse",
+        "description": "设置活跃数据库连接响应"
+      },
+      "SetActiveDbSchemaRequest": {
+        "properties": {
+          "schema_id": {
+            "type": "integer",
+            "title": "Schema Id",
+            "description": "模式ID"
+          }
+        },
+        "type": "object",
+        "required": [
+          "schema_id"
+        ],
+        "title": "SetActiveDbSchemaRequest",
+        "description": "设置活跃数据库模式请求"
+      },
+      "SetActiveDbSchemaResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "设置结果消息"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "SetActiveDbSchemaResponse",
+        "description": "设置活跃数据库模式响应"
+      },
+      "SetActiveModelConnectionRequest": {
+        "properties": {
+          "connection_id": {
+            "type": "integer",
+            "title": "Connection Id",
+            "description": "模型连接ID"
+          }
+        },
+        "type": "object",
+        "required": [
+          "connection_id"
+        ],
+        "title": "SetActiveModelConnectionRequest",
+        "description": "设置活跃模型连接请求"
+      },
+      "SetActiveModelConnectionResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "设置结果消息"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "SetActiveModelConnectionResponse",
+        "description": "设置活跃模型连接响应"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}
