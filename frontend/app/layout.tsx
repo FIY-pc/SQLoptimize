@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import GlobalAuthFetch from "@/components/GlobalAuthFetch";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,6 +28,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        {/* 自动处理鉴权失效：401/403 时清理登录态 */}
+        <GlobalAuthFetch />
         {children}
       </body>
     </html>

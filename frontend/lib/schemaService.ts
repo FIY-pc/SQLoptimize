@@ -2,6 +2,7 @@
 
 import { HttpError, NotFoundError, ValidationError } from "./modelService";
 import { buildHeaders, createStore, createSelectedIdStorage } from "./serviceUtils";
+import { fetchWithAuth } from "@/lib/auth";
 
 const BASE_URL = process.env.NEXT_PUBLIC_MODEL_SERVICE_URL || "http://127.0.0.1:8000";
 
@@ -49,7 +50,7 @@ function toOptions(items: BackendDbSchemaItem[]): SchemaOption[] {
 export const schemaApi = {
     async getActive(): Promise<BackendDbSchemaItem> {
         const url = new URL("/api/schemas/active", BASE_URL);
-        const resp = await fetch(url.toString(), { method: "GET", headers: buildHeaders(false), redirect: "follow" });
+        const resp = await fetchWithAuth(url.toString(), { method: "GET", headers: buildHeaders(false), redirect: "follow" });
         if (resp.ok) return (await resp.json()) as BackendDbSchemaItem;
         let payload: unknown = undefined;
         try { const ct = resp.headers.get("content-type") || ""; payload = ct.includes("application/json") ? await resp.json() : await resp.text(); } catch { }
@@ -63,7 +64,7 @@ export const schemaApi = {
         const limit = params?.limit ?? 100;
         url.searchParams.set("skip", String(skip));
         url.searchParams.set("limit", String(limit));
-        const resp = await fetch(url.toString(), { method: "GET", headers: buildHeaders(false), redirect: "follow" });
+        const resp = await fetchWithAuth(url.toString(), { method: "GET", headers: buildHeaders(false), redirect: "follow" });
         if (!resp.ok) throw new Error(`schema list failed: ${resp.status}`);
         const data = await resp.json().catch(() => undefined);
         if (!data || !Array.isArray(data.schemas)) return { schemas: [], total: 0, skip, limit };
@@ -71,13 +72,13 @@ export const schemaApi = {
     },
     async create(payload: CreateDbSchema): Promise<BackendDbSchemaItem> {
         const url = new URL("/api/schemas/", BASE_URL);
-        const resp = await fetch(url.toString(), { method: "POST", headers: buildHeaders(true), body: JSON.stringify(payload), redirect: "follow" });
+        const resp = await fetchWithAuth(url.toString(), { method: "POST", headers: buildHeaders(true), body: JSON.stringify(payload), redirect: "follow" });
         if (!resp.ok) throw new Error(`schema create failed: ${resp.status}`);
         return (await resp.json()) as BackendDbSchemaItem;
     },
     async setActive(schemaId: number | string) {
         const url = new URL("/api/schemas/active", BASE_URL);
-        const resp = await fetch(url.toString(), { method: "POST", headers: buildHeaders(true), body: JSON.stringify({ schema_id: Number(schemaId) }), redirect: "follow" });
+        const resp = await fetchWithAuth(url.toString(), { method: "POST", headers: buildHeaders(true), body: JSON.stringify({ schema_id: Number(schemaId) }), redirect: "follow" });
         if (resp.ok) { try { return await resp.json(); } catch { return { message: "OK" }; } }
         let payload: unknown = undefined;
         try { const ct = resp.headers.get("content-type") || ""; payload = ct.includes("application/json") ? await resp.json() : await resp.text(); } catch { }
@@ -87,7 +88,7 @@ export const schemaApi = {
     },
     async get(schemaId: number | string): Promise<BackendDbSchemaItem> {
         const url = new URL(`/api/schemas/${encodeURIComponent(String(schemaId))}`, BASE_URL);
-        const resp = await fetch(url.toString(), { method: "GET", headers: buildHeaders(false), redirect: "follow" });
+        const resp = await fetchWithAuth(url.toString(), { method: "GET", headers: buildHeaders(false), redirect: "follow" });
         if (resp.ok) return (await resp.json()) as BackendDbSchemaItem;
         let payload: unknown = undefined;
         try { const ct = resp.headers.get("content-type") || ""; payload = ct.includes("application/json") ? await resp.json() : await resp.text(); } catch { }
@@ -97,13 +98,13 @@ export const schemaApi = {
     },
     async update(schemaId: number | string, payload: UpdateDbSchema, method: "PUT" | "PATCH" = "PUT"): Promise<BackendDbSchemaItem> {
         const url = new URL(`/api/schemas/${encodeURIComponent(String(schemaId))}`, BASE_URL);
-        const resp = await fetch(url.toString(), { method, headers: buildHeaders(true), body: JSON.stringify(payload), redirect: "follow" });
+        const resp = await fetchWithAuth(url.toString(), { method, headers: buildHeaders(true), body: JSON.stringify(payload), redirect: "follow" });
         if (!resp.ok) throw new Error(`schema update failed: ${resp.status}`);
         return (await resp.json()) as BackendDbSchemaItem;
     },
     async remove(schemaId: number | string): Promise<void> {
         const url = new URL(`/api/schemas/${encodeURIComponent(String(schemaId))}`, BASE_URL);
-        const resp = await fetch(url.toString(), { method: "DELETE", headers: buildHeaders(false), redirect: "follow" });
+        const resp = await fetchWithAuth(url.toString(), { method: "DELETE", headers: buildHeaders(false), redirect: "follow" });
         if (resp.status === 200 || resp.status === 204) return;
         let payload: unknown = undefined;
         try { const ct = resp.headers.get("content-type") || ""; payload = ct.includes("application/json") ? await resp.json() : await resp.text(); } catch { }

@@ -11,7 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { TypewriterEffectSmooth } from "@/components/ui/typewriter-effect";
-import { loginUser, registerUser, isLoggedIn, getAuth, clearAuth } from "@/lib/authService";
+import { loginUser, registerUser, isLoggedIn, getAuth, clearAuth } from "@/lib/auth";
 
 export interface LoginModalProps {
     open: boolean;

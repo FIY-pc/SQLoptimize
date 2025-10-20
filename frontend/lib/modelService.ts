@@ -4,6 +4,7 @@
 // 读取公开环境变量（需以 NEXT_PUBLIC_ 开头）或从 localStorage 读取 token
 
 import { buildHeaders, createStore, createSelectedIdStorage } from "./serviceUtils";
+import { fetchWithAuth } from "@/lib/auth";
 
 const BASE_URL = process.env.NEXT_PUBLIC_MODEL_SERVICE_URL || "http://127.0.0.1:8000";
 
@@ -30,7 +31,7 @@ export const modelApi = {
     /** 获取当前活跃的模型连接 */
     async getActive(): Promise<BackendModelItem> {
         const url = new URL("/api/models/active", BASE_URL);
-        const resp = await fetch(url.toString(), {
+        const resp = await fetchWithAuth(url.toString(), {
             method: "GET",
             headers: buildHeaders(false),
             redirect: "follow"
@@ -54,7 +55,7 @@ export const modelApi = {
         url.searchParams.set("limit", String(limit));
         if (params?.model !== undefined) url.searchParams.set("model", String(params.model));
 
-        const resp = await fetch(url.toString(), {
+        const resp = await fetchWithAuth(url.toString(), {
             method: "GET",
             headers: buildHeaders(false),
             redirect: "follow"
@@ -71,7 +72,7 @@ export const modelApi = {
     /** 创建模型连接 */
     async create(payload: CreateModelConnection): Promise<BackendModelItem> {
         const url = new URL("/api/models/", BASE_URL);
-        const resp = await fetch(url.toString(), {
+        const resp = await fetchWithAuth(url.toString(), {
             method: "POST",
             headers: buildHeaders(true),
             body: JSON.stringify(payload),
@@ -85,7 +86,7 @@ export const modelApi = {
     /** 设置当前活跃的模型连接 */
     async setActive(connectionId: number | string): Promise<SetActiveModelConnectionResponse> {
         const url = new URL("/api/models/active", BASE_URL);
-        const resp = await fetch(url.toString(), {
+        const resp = await fetchWithAuth(url.toString(), {
             method: "POST",
             headers: buildHeaders(true),
             body: JSON.stringify({ connection_id: Number(connectionId) }),
@@ -111,7 +112,7 @@ export const modelApi = {
     /** 根据 ID 获取模型连接 */
     async get(connectionId: number | string): Promise<BackendModelItem> {
         const url = new URL(`/api/models/${encodeURIComponent(String(connectionId))}`, BASE_URL);
-        const resp = await fetch(url.toString(), {
+        const resp = await fetchWithAuth(url.toString(), {
             method: "GET",
             headers: buildHeaders(false),
             redirect: "follow"
@@ -124,7 +125,7 @@ export const modelApi = {
     /** 更新模型连接 */
     async update(connectionId: string, payload: UpdateModelConnection, method: "PUT" | "PATCH" = "PUT"): Promise<BackendModelItem> {
         const url = new URL(`/api/models/${encodeURIComponent(connectionId)}`, BASE_URL);
-        const resp = await fetch(url.toString(), {
+        const resp = await fetchWithAuth(url.toString(), {
             method,
             headers: buildHeaders(true),
             body: JSON.stringify(payload),
@@ -138,7 +139,7 @@ export const modelApi = {
     /** 删除模型连接 */
     async remove(connectionId: number | string): Promise<void> {
         const url = new URL(`/api/models/${encodeURIComponent(String(connectionId))}`, BASE_URL);
-        const resp = await fetch(url.toString(), {
+        const resp = await fetchWithAuth(url.toString(), {
             method: "DELETE",
             headers: buildHeaders(false),
             redirect: "follow"

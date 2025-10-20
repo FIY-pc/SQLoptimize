@@ -2,7 +2,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState, type FC } from "react";
 import { modelService, NotFoundError, ValidationError, type ModelOption } from "@/lib/modelService";
-import { AUTH_CHANGED_EVENT } from "@/lib/authService";
+import { AUTH_CHANGED_EVENT } from "@/lib/auth";
 import anthropic from "../../assets/providers/anthropic.svg";
 import fireworks from "../../assets/providers/fireworks.svg";
 import google from "../../assets/providers/google.svg";

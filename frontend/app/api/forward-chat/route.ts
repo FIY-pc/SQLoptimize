@@ -44,6 +44,14 @@ export async function POST(req: Request) {
         });
 
         if (!resp.ok) {
+            // 对鉴权失败做特殊处理：直接把 401/403 透传给前端，便于统一的客户端逻辑自动清理登录态
+            if (resp.status === 401 || resp.status === 403) {
+                const text = await resp.text().catch(() => "");
+                return new Response(JSON.stringify({ error: "未授权或登录已过期", detail: text || undefined }), {
+                    status: resp.status,
+                    headers: { "content-type": "application/json", "cache-control": "no-store" },
+                });
+            }
             const text = await resp.text();
             return createAssistantUIErrorStream(`外部后端错误: ${resp.status}`, text);
         }

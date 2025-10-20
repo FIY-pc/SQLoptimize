@@ -2,6 +2,7 @@
 
 import { HttpError, NotFoundError, ValidationError } from "./modelService";
 import { buildHeaders, createStore, createSelectedIdStorage } from "./serviceUtils";
+import { fetchWithAuth } from "@/lib/auth";
 
 const BASE_URL = process.env.NEXT_PUBLIC_MODEL_SERVICE_URL || "http://127.0.0.1:8000";
 
@@ -37,7 +38,7 @@ export interface ListDatabasesResponse {
 export const databaseApi = {
     async getActive(): Promise<BackendDatabaseItem> {
         const url = new URL("/api/databases/active", BASE_URL);
-        const resp = await fetch(url.toString(), { method: "GET", headers: buildHeaders(false), redirect: "follow" });
+        const resp = await fetchWithAuth(url.toString(), { method: "GET", headers: buildHeaders(false), redirect: "follow" });
         if (resp.ok) return (await resp.json()) as BackendDatabaseItem;
         let payload: unknown = undefined;
         try {
@@ -56,7 +57,7 @@ export const databaseApi = {
         url.searchParams.set("skip", String(skip));
         url.searchParams.set("limit", String(limit));
         if (params?.q) url.searchParams.set("q", params.q);
-        const resp = await fetch(url.toString(), { method: "GET", headers: buildHeaders(false), redirect: "follow" });
+        const resp = await fetchWithAuth(url.toString(), { method: "GET", headers: buildHeaders(false), redirect: "follow" });
         if (!resp.ok) throw new Error(`db list failed: ${resp.status}`);
         const data = await resp.json().catch(() => undefined);
         if (!data || !Array.isArray(data.databases)) return { databases: [], total: 0, skip, limit };
@@ -65,14 +66,14 @@ export const databaseApi = {
 
     async create(payload: CreateDatabaseConnection): Promise<BackendDatabaseItem> {
         const url = new URL("/api/databases/", BASE_URL);
-        const resp = await fetch(url.toString(), { method: "POST", headers: buildHeaders(true), body: JSON.stringify(payload), redirect: "follow" });
+        const resp = await fetchWithAuth(url.toString(), { method: "POST", headers: buildHeaders(true), body: JSON.stringify(payload), redirect: "follow" });
         if (!resp.ok) throw new Error(`db create failed: ${resp.status}`);
         return (await resp.json()) as BackendDatabaseItem;
     },
 
     async setActive(connectionId: number | string) {
         const url = new URL("/api/databases/active", BASE_URL);
-        const resp = await fetch(url.toString(), { method: "POST", headers: buildHeaders(true), body: JSON.stringify({ connection_id: Number(connectionId) }), redirect: "follow" });
+        const resp = await fetchWithAuth(url.toString(), { method: "POST", headers: buildHeaders(true), body: JSON.stringify({ connection_id: Number(connectionId) }), redirect: "follow" });
         if (resp.ok) { try { return await resp.json(); } catch { return { message: "OK" }; } }
         let payload: unknown = undefined;
         try {
@@ -86,7 +87,7 @@ export const databaseApi = {
 
     async get(connectionId: number | string): Promise<BackendDatabaseItem> {
         const url = new URL(`/api/databases/${encodeURIComponent(String(connectionId))}`, BASE_URL);
-        const resp = await fetch(url.toString(), { method: "GET", headers: buildHeaders(false), redirect: "follow" });
+        const resp = await fetchWithAuth(url.toString(), { method: "GET", headers: buildHeaders(false), redirect: "follow" });
         if (resp.ok) return (await resp.json()) as BackendDatabaseItem;
         let payload: unknown = undefined;
         try {
@@ -100,14 +101,14 @@ export const databaseApi = {
 
     async update(connectionId: number | string, payload: UpdateDatabaseConnection, method: "PUT" | "PATCH" = "PUT"): Promise<BackendDatabaseItem> {
         const url = new URL(`/api/databases/${encodeURIComponent(String(connectionId))}`, BASE_URL);
-        const resp = await fetch(url.toString(), { method, headers: buildHeaders(true), body: JSON.stringify(payload), redirect: "follow" });
+        const resp = await fetchWithAuth(url.toString(), { method, headers: buildHeaders(true), body: JSON.stringify(payload), redirect: "follow" });
         if (!resp.ok) throw new Error(`db update failed: ${resp.status}`);
         return (await resp.json()) as BackendDatabaseItem;
     },
 
     async remove(connectionId: number | string): Promise<void> {
         const url = new URL(`/api/databases/${encodeURIComponent(String(connectionId))}`, BASE_URL);
-        const resp = await fetch(url.toString(), { method: "DELETE", headers: buildHeaders(false), redirect: "follow" });
+        const resp = await fetchWithAuth(url.toString(), { method: "DELETE", headers: buildHeaders(false), redirect: "follow" });
         if (resp.status === 200 || resp.status === 204) return;
         let payload: unknown = undefined;
         try {

@@ -1,6 +1,6 @@
 "use client";
 
-import { TOKEN_STORAGE_KEY } from "./serviceUtils";
+import { TOKEN_STORAGE_KEY } from "../serviceUtils";
 
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
 

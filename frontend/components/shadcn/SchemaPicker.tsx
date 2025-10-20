@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState, type FC } from "react";
 import { schemaService, type SchemaOption, type CreateDbSchema, type UpdateDbSchema } from "@/lib/schemaService";
-import { AUTH_CHANGED_EVENT } from "@/lib/authService";
+import { AUTH_CHANGED_EVENT } from "@/lib/auth";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Separator } from "../ui/separator";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
