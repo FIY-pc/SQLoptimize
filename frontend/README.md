@@ -26,4 +26,4 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 
 * localStorage.removeItem('SQLopt.auth')
-* localStorage.removeItem('MODEL_SERVICE_TOKEN')
+* localStorage.removeItem('SQLOPT_SERVICE_TOKEN')

@@ -1,7 +1,8 @@
 "use client";
 import Image from "next/image";
 import { useEffect, useRef, useState, type FC } from "react";
-import { modelService, NotFoundError, ValidationError, type ModelOption } from "@/lib/modelService";
+import { modelService, type ModelOption } from "@/lib/model";
+import { NotFoundError, ValidationError } from "@/lib/errors";
 import { AUTH_CHANGED_EVENT } from "@/lib/auth";
 import anthropic from "../../assets/providers/anthropic.svg";
 import fireworks from "../../assets/providers/fireworks.svg";

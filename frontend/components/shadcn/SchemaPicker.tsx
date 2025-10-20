@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState, type FC } from "react";
-import { schemaService, type SchemaOption, type CreateDbSchema, type UpdateDbSchema } from "@/lib/schemaService";
+import { schemaService, type SchemaOption, type CreateDbSchema, type UpdateDbSchema } from "@/lib/schema";
 import { AUTH_CHANGED_EVENT } from "@/lib/auth";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Separator } from "../ui/separator";
@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { PlusIcon, Trash2Icon } from "lucide-react";
-import { NotFoundError, ValidationError } from "@/lib/modelService";
+import { NotFoundError, ValidationError } from "@/lib/errors";
 import editIcon from "../../assets/tools/edit.svg";
 import schemaIcon from "../../assets/providers/schema.svg";
 

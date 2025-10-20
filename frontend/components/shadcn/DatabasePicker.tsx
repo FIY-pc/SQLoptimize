@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState, type FC } from "react";
-import { databaseService, type DatabaseOption, type CreateDatabaseConnection } from "@/lib/databaseService";
+import { databaseService, type DatabaseOption, type CreateDatabaseConnection } from "@/lib/database";
 import { AUTH_CHANGED_EVENT } from "@/lib/auth";
-import { NotFoundError, ValidationError } from "@/lib/modelService";
+import { NotFoundError, ValidationError } from "@/lib/errors";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Separator } from "../ui/separator";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";

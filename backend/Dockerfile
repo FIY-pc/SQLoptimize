@@ -1,4 +1,5 @@
-FROM python:3.13-slim-bookworm
+ARG PYTHON_IMAGE=python:3.13-slim-bookworm
+FROM ${PYTHON_IMAGE}
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ca-certificates tzdata && \

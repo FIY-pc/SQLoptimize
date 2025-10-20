@@ -13,38 +13,65 @@ export interface OptimizeRequestPayload {
     stream: boolean;
 }
 
-// 构建发往后端的请求体（仅保留流式所需字段）
-export function buildOptimizeRequestPayload(body: ForwardBody): OptimizeRequestPayload {
-    // 取最后一条 user 消息作为 SQL 输入
-    const lastUser = [...body.messages].reverse().find(m => m.role === 'user');
-    const parts = lastUser?.parts ?? [];
-    const texts: string[] = [];
-    for (const p of parts as unknown[]) {
-        if (typeof p === 'string') {
-            texts.push(p);
-            continue;
-        }
-        if (typeof p === 'object' && p !== null) {
-            const text = (p as Record<string, unknown>).text;
-            if (typeof text === 'string') texts.push(text);
+// 公共：SSE 响应头
+export const SSE_HEADERS: Record<string, string> = {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+    "x-accel-buffering": "no",
+    "x-vercel-ai-ui-message-stream": "v1",
+};
+
+// 复用的编码器/解码器
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+
+// 从 UIMessage[] 中提取最后一条 user 消息的纯文本（兼容 content 与 parts）
+export function extractLastUserText(messages: UIMessage[]): string {
+    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    if (!lastUser) return "";
+
+    const chunks: string[] = [];
+    // 先尝试标准 content
+    const content = (lastUser as unknown as { content?: unknown }).content;
+    if (typeof content === "string") chunks.push(content);
+
+    // 再尝试 parts 结构
+    const parts = (lastUser as unknown as { parts?: unknown }).parts;
+    if (Array.isArray(parts)) {
+        for (const p of parts as unknown[]) {
+            if (typeof p === "string") {
+                chunks.push(p);
+            } else if (p && typeof p === "object") {
+                const text = (p as Record<string, unknown>).text;
+                if (typeof text === "string") chunks.push(text);
+            }
         }
     }
-    const sql = texts.filter(Boolean).join('\n');
 
-    // 可从 meta 读取控制项（可选）
-    const meta = body.meta || {};
-    const stream = typeof meta.stream === 'boolean' ? meta.stream : true;
+    return chunks.map((s) => String(s)).join("\n").trim();
+}
+
+// 构建发往后端的请求体（仅保留流式所需字段）
+export function buildOptimizeRequestPayload(body: ForwardBody): OptimizeRequestPayload {
+    // 取最后一条 user 消息作为 SQL 输入，若为空，尝试从 meta.sql 兜底
+    const meta = (body.meta || {}) as Record<string, unknown>;
+    const fromMessages = extractLastUserText(body.messages);
+    const fromMeta = typeof meta.sql === "string" ? meta.sql : "";
+    const sql = (fromMessages || fromMeta || "").trim();
+
+    // 控制是否流式
+    const stream = typeof meta.stream === "boolean" ? meta.stream : true;
 
     const payload: OptimizeRequestPayload = {
         sql,
-        stream: Boolean(stream)
+        stream: Boolean(stream),
     };
     return payload;
 }
 
 // 统一错误流（Assistant UI 协议）
 export function createAssistantUIErrorStream(error: string, details?: string) {
-    const encoder = new TextEncoder();
     const errorData = {
         type: 'error',
         error: details ? `${error}: ${details}` : error
@@ -57,18 +84,12 @@ export function createAssistantUIErrorStream(error: string, details?: string) {
         }
     });
     return new Response(stream, {
-        headers: {
-            'Content-Type': 'text/event-stream',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
-        },
+        headers: SSE_HEADERS,
     });
 }
 
 // 将后端流转换并直接构造 Assistant UI 响应（集成转换和响应头）
 export function toAssistantUIResponse(backendStream: ReadableStream<Uint8Array>) {
-    const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
     const msgId = crypto.randomUUID();
     let buffer = "";
     let started = false;
@@ -118,6 +139,21 @@ export function toAssistantUIResponse(backendStream: ReadableStream<Uint8Array>)
             }
         },
         flush(controller) {
+            // 处理剩余缓冲（若最后一段没有换行）
+            if (buffer.trim()) {
+                for (const jsonLine of extractPayloadLines(buffer)) {
+                    if (jsonLine === "[DONE]") continue;
+                    try {
+                        const obj = JSON.parse(jsonLine);
+                        if (obj?.type === 'AIMessageChunk' && typeof obj?.content === 'string' && obj.content) {
+                            const deltaEvt = { type: 'text-delta', id: msgId, delta: obj.content };
+                            controller.enqueue(encoder.encode(`data: ${JSON.stringify(deltaEvt)}\n\n`));
+                        }
+                    } catch {
+                        // 忽略无法解析的行
+                    }
+                }
+            }
             if (started) {
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "text-end", id: msgId })}\n\n`));
             }
@@ -128,12 +164,6 @@ export function toAssistantUIResponse(backendStream: ReadableStream<Uint8Array>)
 
     const piped = backendStream.pipeThrough(uiTransform);
     return new Response(piped, {
-        headers: {
-            'Content-Type': 'text/event-stream',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
-            'x-accel-buffering': 'no',
-            'x-vercel-ai-ui-message-stream': 'v1',
-        },
+        headers: SSE_HEADERS,
     });
 }
