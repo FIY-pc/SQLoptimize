@@ -122,7 +122,7 @@ export const schemaService = {
     getOptions(): SchemaOption[] { return schemaStore.getState().options; },
     getSelectedId(): string | null { return schemaStore.getState().selectedId; },
 
-    // 初始化：localStorage → 后端活跃 → 列表首项
+    // 初始化：后端活跃 → localStorage → 列表首项（刷新优先以后端为准）
     async init() {
         schemaStore.setState({ loading: true, error: undefined });
         try {
@@ -130,17 +130,17 @@ export const schemaService = {
             const items = Array.isArray(data.schemas) ? data.schemas : [];
             const options = toOptions(items);
             schemaStore.setState({ schemas: items, options });
-            let selected = readSavedSchema();
-            if (!selected) {
-                const activeId = typeof data.active_schema_id === "number" && data.active_schema_id > 0
-                    ? String(data.active_schema_id)
-                    : null;
-                if (activeId) {
-                    selected = activeId;
-                } else {
-                    try { const active = await schemaApi.getActive(); selected = active ? String(active.id) : null; } catch { }
-                }
+            // 先取后端活跃
+            let selected: string | null = null;
+            const activeFromList = typeof data.active_schema_id === "number" && data.active_schema_id > 0
+                ? String(data.active_schema_id) : null;
+            if (activeFromList) {
+                selected = activeFromList;
+            } else {
+                try { const active = await schemaApi.getActive(); selected = active ? String(active.id) : null; } catch { }
             }
+            // 若后端未给出活跃项，再回退到本地保存
+            if (!selected) selected = readSavedSchema();
             if (selected && !options.find(o => o.value === selected)) selected = null;
             if (!selected) selected = options[0]?.value ?? null;
             schemaStore.setState({ selectedId: selected });

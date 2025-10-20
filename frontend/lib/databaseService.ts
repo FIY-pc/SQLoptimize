@@ -159,19 +159,23 @@ export const databaseService = {
         try {
             const data = await databaseApi.list();
             const items = Array.isArray(data.databases) ? data.databases : [];
-            applyDatabasesToStore(items, null);
-            let selected = readSavedDb();
-            if (!selected) {
-                const activeId = typeof data.active_connection_id === "number" && data.active_connection_id > 0
-                    ? String(data.active_connection_id)
-                    : null;
-                if (activeId) {
-                    selected = activeId;
-                } else {
-                    try { const active = await databaseApi.getActive(); selected = active ? String(active.id) : null; } catch { /* ignore */ }
-                }
+            // 仅写入 items/options，不立刻决定 selected，避免误把第一个项写入本地
+            const options = toOptions(items);
+            dbStore.setState({ databases: items, options });
+            // 选中优先级：后端活跃 → localStorage → 列表首项
+            let selected: string | null = null;
+            const activeId = typeof data.active_connection_id === "number" && data.active_connection_id > 0
+                ? String(data.active_connection_id)
+                : null;
+            if (activeId) {
+                selected = activeId;
+            } else {
+                try { const active = await databaseApi.getActive(); selected = active ? String(active.id) : null; } catch { /* ignore */ }
             }
-            applyDatabasesToStore(items, selected);
+            if (!selected) selected = readSavedDb();
+            if (!options.some(o => o.value === selected)) selected = options[0]?.value ?? null;
+            dbStore.setState({ selectedId: selected });
+            saveDb(selected ?? null);
         } catch (e) {
             dbStore.setState({ error: e instanceof Error ? e.message : String(e) });
         } finally {

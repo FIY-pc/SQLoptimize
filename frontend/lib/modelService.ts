@@ -255,26 +255,28 @@ export const modelService = {
                 store.setState({ loading: true, error: undefined });
                 const data = await modelApi.list();
                 const models = Array.isArray(data.models) ? data.models : [];
-                // 先写入 models/options，再决策选中值
-                applyModelsToStore(models, null);
-                // 选中优先级：localStorage → 后端活跃 → 列表首项
-                let selected = selectedStorage.read();
-                if (!selected) {
-                    const activeId = typeof data.active_connection_id === "number" && data.active_connection_id > 0
-                        ? String(data.active_connection_id)
-                        : null;
-                    if (activeId) {
-                        selected = activeId;
-                    } else {
-                        try {
-                            const active = await modelApi.getActive();
-                            selected = active ? String(active.id) : null;
-                        } catch {
-                            selected = null;
-                        }
+                // 仅写入 models/options，不立即决定 selected，避免把“第一个选项”提前持久化
+                const options = toOptions(models);
+                store.setState({ models, options });
+                // 选中优先级：后端活跃 → localStorage → 列表首项（刷新优先以后端为准）
+                let selected: string | null = null;
+                const activeId = typeof data.active_connection_id === "number" && data.active_connection_id > 0
+                    ? String(data.active_connection_id)
+                    : null;
+                if (activeId) {
+                    selected = activeId;
+                } else {
+                    try {
+                        const active = await modelApi.getActive();
+                        selected = active ? String(active.id) : null;
+                    } catch {
+                        selected = null;
                     }
                 }
-                applyModelsToStore(models, selected);
+                if (!selected) selected = selectedStorage.read();
+                if (!options.some(o => o.value === selected)) selected = options[0]?.value ?? null;
+                store.setState({ selectedId: selected });
+                selectedStorage.save(selected ?? null);
                 store.setState({ loading: false });
             })();
         }
