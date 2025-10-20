@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState, type FC } from "react";
-import { schemaService, type SchemaOption } from "@/lib/schemaService";
+import { schemaService, type SchemaOption, type CreateDbSchema, type UpdateDbSchema } from "@/lib/schemaService";
 import { AUTH_CHANGED_EVENT } from "@/lib/authService";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Separator } from "../ui/separator";
@@ -34,11 +34,11 @@ export const SchemaPicker: FC = () => {
     // 防止 SelectItem 被“编辑/删除”按钮误触发选中
     const actionClickRef = useRef(false);
     const markActionClick = () => { actionClickRef.current = true; setTimeout(() => { actionClickRef.current = false; }, 100); };
-    const stop = (e: any) => { e.preventDefault(); e.stopPropagation(); };
-    const onActionPointerDownCapture = (e: any) => { markActionClick(); e.stopPropagation(); };
-    const onBtnMouseOrPointerDown = (e: any) => { markActionClick(); stop(e); };
-    const onBtnMouseOrPointerUp = (e: any) => { markActionClick(); e.stopPropagation(); };
-    const onBtnKeyDown = (e: any) => { e.stopPropagation(); };
+    const stop = (e: Event | React.UIEvent | React.MouseEvent | React.PointerEvent | React.KeyboardEvent) => { e.preventDefault(); e.stopPropagation(); };
+    const onActionPointerDownCapture = (e: React.PointerEvent) => { markActionClick(); e.stopPropagation(); };
+    const onBtnMouseOrPointerDown = (e: React.MouseEvent | React.PointerEvent) => { markActionClick(); stop(e); };
+    const onBtnMouseOrPointerUp = (e: React.MouseEvent | React.PointerEvent) => { markActionClick(); e.stopPropagation(); };
+    const onBtnKeyDown = (e: React.KeyboardEvent) => { e.stopPropagation(); };
 
     useEffect(() => {
         const syncFromService = () => {
@@ -56,8 +56,8 @@ export const SchemaPicker: FC = () => {
                 setLoading(false);
             }
         })();
-        const onAuthChange = (e: any) => {
-            const kind = e?.detail?.kind as ("login" | "logout" | undefined);
+        const onAuthChange = (e: CustomEvent<{ kind: "login" | "logout" }>) => {
+            const kind = e?.detail?.kind;
             if (kind === "login") {
                 setLoading(true);
                 schemaService.refresh().finally(() => setLoading(false));
@@ -66,8 +66,8 @@ export const SchemaPicker: FC = () => {
                 setVal("");
             }
         };
-        window.addEventListener(AUTH_CHANGED_EVENT, onAuthChange as any);
-        return () => { unsub(); window.removeEventListener(AUTH_CHANGED_EVENT, onAuthChange as any); };
+        window.addEventListener(AUTH_CHANGED_EVENT as unknown as string, onAuthChange as EventListener);
+        return () => { unsub(); window.removeEventListener(AUTH_CHANGED_EVENT as unknown as string, onAuthChange as EventListener); };
     }, []);
 
     const handleSelectOpenChange = async (isOpen: boolean) => {
@@ -152,16 +152,18 @@ export const SchemaPicker: FC = () => {
         setCreating(true);
         try {
             if (dialogMode === "add") {
-                const created = await schemaService.create({
+                const payload: CreateDbSchema = {
                     schema_name: form.schema_name || undefined,
                     schema_content: form.schema_content,
-                } as any);
+                };
+                const created = await schemaService.create(payload);
                 console.log("Schema created:", created);
             } else if (dialogMode === "edit" && editingId) {
-                const updated = await schemaService.update(editingId, {
+                const payload: UpdateDbSchema = {
                     schema_name: form.schema_name || undefined,
                     schema_content: form.schema_content,
-                }, "PUT");
+                };
+                const updated = await schemaService.update(editingId, payload, "PUT");
                 console.log("Schema updated:", updated);
             }
             setOpen(false);
@@ -195,7 +197,7 @@ export const SchemaPicker: FC = () => {
                         <SelectItem
                             key={s.value}
                             value={s.value}
-                            onSelect={(e) => { if (actionClickRef.current) { e.preventDefault(); (e as any).stopPropagation?.(); } }}
+                            onSelect={(e) => { if (actionClickRef.current) { e.preventDefault(); (e as unknown as { stopPropagation?: () => void }).stopPropagation?.(); } }}
                         >
                             <div className="flex w-full items-center justify-between">
                                 <span className="flex items-center min-w-0 space-x-3">

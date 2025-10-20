@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState, type FC } from "react";
-import { databaseService, type DatabaseOption } from "@/lib/databaseService";
+import { databaseService, type DatabaseOption, type CreateDatabaseConnection } from "@/lib/databaseService";
 import { AUTH_CHANGED_EVENT } from "@/lib/authService";
 import { NotFoundError, ValidationError } from "@/lib/modelService";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
@@ -14,8 +14,10 @@ import { PlusIcon, Trash2Icon } from "lucide-react";
 import editIcon from "../../assets/tools/edit.svg";
 import dbIcon from "../../assets/providers/database.svg";
 
+type IconType = string | import("next/image").StaticImageData;
+
 export const DatabasePicker: FC = () => {
-    const [options, setOptions] = useState<Array<{ name: string; value: string; icon: any }>>([]);
+    const [options, setOptions] = useState<Array<{ name: string; value: string; icon: IconType }>>([]);
     const [val, setVal] = useState<string>("");
     const [loading, setLoading] = useState<boolean>(false);
     const ADD_VALUE = "__add__";
@@ -23,11 +25,11 @@ export const DatabasePicker: FC = () => {
     // 拦截“删除”按钮导致的误选中
     const actionClickRef = useRef(false);
     const markActionClick = () => { actionClickRef.current = true; setTimeout(() => { actionClickRef.current = false; }, 100); };
-    const stop = (e: any) => { e.preventDefault(); e.stopPropagation(); };
-    const onActionPointerDownCapture = (e: any) => { markActionClick(); e.stopPropagation(); };
-    const onBtnMouseOrPointerDown = (e: any) => { markActionClick(); stop(e); };
-    const onBtnMouseOrPointerUp = (e: any) => { markActionClick(); e.stopPropagation(); };
-    const onBtnKeyDown = (e: any) => { e.stopPropagation(); };
+    const stop = (e: Event | React.UIEvent | React.MouseEvent | React.PointerEvent | React.KeyboardEvent) => { e.preventDefault(); e.stopPropagation(); };
+    const onActionPointerDownCapture = (e: React.PointerEvent) => { markActionClick(); e.stopPropagation(); };
+    const onBtnMouseOrPointerDown = (e: React.MouseEvent | React.PointerEvent) => { markActionClick(); stop(e); };
+    const onBtnMouseOrPointerUp = (e: React.MouseEvent | React.PointerEvent) => { markActionClick(); e.stopPropagation(); };
+    const onBtnKeyDown = (e: React.KeyboardEvent) => { e.stopPropagation(); };
 
     // Add/Edit dialog state
     const [open, setOpen] = useState(false);
@@ -58,8 +60,8 @@ export const DatabasePicker: FC = () => {
                 setLoading(false);
             }
         })();
-        const onAuthChange = (e: any) => {
-            const kind = e?.detail?.kind as ("login" | "logout" | undefined);
+        const onAuthChange = (e: CustomEvent<{ kind: "login" | "logout" }>) => {
+            const kind = e?.detail?.kind;
             if (kind === "login") {
                 setLoading(true);
                 databaseService.refresh().finally(() => setLoading(false));
@@ -68,8 +70,8 @@ export const DatabasePicker: FC = () => {
                 setVal("");
             }
         };
-        window.addEventListener(AUTH_CHANGED_EVENT, onAuthChange as any);
-        return () => { unsub(); window.removeEventListener(AUTH_CHANGED_EVENT, onAuthChange as any); };
+        window.addEventListener(AUTH_CHANGED_EVENT as unknown as string, onAuthChange as EventListener);
+        return () => { unsub(); window.removeEventListener(AUTH_CHANGED_EVENT as unknown as string, onAuthChange as EventListener); };
     }, []);
 
     const handleSelectOpenChange = async (isOpen: boolean) => {
@@ -157,12 +159,13 @@ export const DatabasePicker: FC = () => {
         setCreating(true);
         try {
             if (dialogMode === "add") {
-                const created = await databaseService.create({
+                const payload: CreateDatabaseConnection = {
                     database_name: form.database_name,
                     database_uri: form.database_uri,
                     database_type: form.database_type,
                     database_description: form.database_description,
-                } as any);
+                };
+                const created = await databaseService.create(payload);
                 console.log("Database created:", created);
             } else if (dialogMode === "edit" && editingId) {
                 const updated = await databaseService.update(editingId, {
@@ -204,7 +207,7 @@ export const DatabasePicker: FC = () => {
                         <SelectItem
                             key={db.value}
                             value={db.value}
-                            onSelect={(e) => { if (actionClickRef.current) { e.preventDefault(); (e as any).stopPropagation?.(); } }}
+                            onSelect={(e) => { if (actionClickRef.current) { e.preventDefault(); (e as unknown as { stopPropagation?: () => void }).stopPropagation?.(); } }}
                         >
                             <div className="flex w-full items-center justify-between">
                                 <span className="flex flex-row items-center min-w-0 space-x-3">

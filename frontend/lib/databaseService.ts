@@ -8,8 +8,8 @@ const BASE_URL = process.env.NEXT_PUBLIC_MODEL_SERVICE_URL || "http://127.0.0.1:
 // =========================
 // 类型定义
 // =========================
-export type CreateDatabaseConnection = Record<string, any>;
-export type UpdateDatabaseConnection = Record<string, any>;
+export type CreateDatabaseConnection = Record<string, unknown>;
+export type UpdateDatabaseConnection = Record<string, unknown>;
 
 export interface BackendDatabaseItem {
     id: number;
@@ -19,7 +19,7 @@ export interface BackendDatabaseItem {
     database_description: string;
     created_at: string;
     updated_at: string;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 export interface ListDatabasesResponse {
@@ -39,7 +39,7 @@ export const databaseApi = {
         const url = new URL("/api/databases/active", BASE_URL);
         const resp = await fetch(url.toString(), { method: "GET", headers: buildHeaders(false), redirect: "follow" });
         if (resp.ok) return (await resp.json()) as BackendDatabaseItem;
-        let payload: any = undefined;
+        let payload: unknown = undefined;
         try {
             const ct = resp.headers.get("content-type") || "";
             payload = ct.includes("application/json") ? await resp.json() : await resp.text();
@@ -74,7 +74,7 @@ export const databaseApi = {
         const url = new URL("/api/databases/active", BASE_URL);
         const resp = await fetch(url.toString(), { method: "POST", headers: buildHeaders(true), body: JSON.stringify({ connection_id: Number(connectionId) }), redirect: "follow" });
         if (resp.ok) { try { return await resp.json(); } catch { return { message: "OK" }; } }
-        let payload: any = undefined;
+        let payload: unknown = undefined;
         try {
             const ct = resp.headers.get("content-type") || "";
             payload = ct.includes("application/json") ? await resp.json() : await resp.text();
@@ -88,7 +88,7 @@ export const databaseApi = {
         const url = new URL(`/api/databases/${encodeURIComponent(String(connectionId))}`, BASE_URL);
         const resp = await fetch(url.toString(), { method: "GET", headers: buildHeaders(false), redirect: "follow" });
         if (resp.ok) return (await resp.json()) as BackendDatabaseItem;
-        let payload: any = undefined;
+        let payload: unknown = undefined;
         try {
             const ct = resp.headers.get("content-type") || "";
             payload = ct.includes("application/json") ? await resp.json() : await resp.text();
@@ -109,7 +109,7 @@ export const databaseApi = {
         const url = new URL(`/api/databases/${encodeURIComponent(String(connectionId))}`, BASE_URL);
         const resp = await fetch(url.toString(), { method: "DELETE", headers: buildHeaders(false), redirect: "follow" });
         if (resp.status === 200 || resp.status === 204) return;
-        let payload: any = undefined;
+        let payload: unknown = undefined;
         try {
             const ct = resp.headers.get("content-type") || "";
             payload = ct.includes("application/json") ? await resp.json() : await resp.text();
@@ -184,8 +184,8 @@ export const databaseService = {
             const data = await databaseApi.list();
             const items = Array.isArray(data.databases) ? data.databases : [];
             // 优先使用后端返回的活跃项
-            const activeId = typeof (data as any).active_connection_id === "number" && (data as any).active_connection_id > 0
-                ? String((data as any).active_connection_id)
+            const activeId = typeof (data as { active_connection_id?: number }).active_connection_id === "number" && (data as { active_connection_id?: number }).active_connection_id! > 0
+                ? String((data as { active_connection_id?: number }).active_connection_id)
                 : null;
             if (activeId) {
                 applyDatabasesToStore(items, activeId);

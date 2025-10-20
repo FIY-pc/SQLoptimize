@@ -26,7 +26,8 @@ import { PlusIcon, Trash2Icon } from "lucide-react";
 import editIcon from "../../assets/tools/edit.svg";
 
 // icon 映射，使用 modelService 计算的 iconKey
-const ICONS: Record<string, any> = {
+type IconType = string | import("next/image").StaticImageData;
+const ICONS: Record<string, IconType> = {
   openai,
   deepseek,
   anthropic,
@@ -38,7 +39,7 @@ const ICONS: Record<string, any> = {
 };
 export const ModelPicker: FC = () => {
   // 选项与当前选中的 id
-  const [options, setOptions] = useState<Array<{ name: string; value: string; icon: any }>>([]);
+  const [options, setOptions] = useState<Array<{ name: string; value: string; icon: IconType }>>([]);
   const [selectedId, setSelectedId] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const ADD_VALUE = "__add__";
@@ -59,13 +60,13 @@ export const ModelPicker: FC = () => {
   };
 
   // 常用事件帮助函数，提升可读性
-  const stop = (e: any) => { e.preventDefault(); e.stopPropagation(); };
-  const onActionPointerDownCapture = (e: any) => { markActionClick(); e.stopPropagation(); };
-  const onBtnMouseOrPointerDown = (e: any) => { markActionClick(); stop(e); };
-  const onBtnMouseOrPointerUp = (e: any) => { markActionClick(); e.stopPropagation(); };
-  const onBtnKeyDown = (e: any) => { e.stopPropagation(); };
-  const onEditClick = (e: any, id: string) => { stop(e); openEdit(id); };
-  const onDeleteClick = (e: any, id: string) => handleDelete(e, id);
+  const stop = (e: Event | React.UIEvent | React.MouseEvent | React.PointerEvent | React.KeyboardEvent) => { e.preventDefault(); e.stopPropagation(); };
+  const onActionPointerDownCapture = (e: React.PointerEvent) => { markActionClick(); e.stopPropagation(); };
+  const onBtnMouseOrPointerDown = (e: React.MouseEvent | React.PointerEvent) => { markActionClick(); stop(e); };
+  const onBtnMouseOrPointerUp = (e: React.MouseEvent | React.PointerEvent) => { markActionClick(); e.stopPropagation(); };
+  const onBtnKeyDown = (e: React.KeyboardEvent) => { e.stopPropagation(); };
+  const onEditClick = (e: React.MouseEvent, id: string) => { stop(e); openEdit(id); };
+  const onDeleteClick = (e: React.MouseEvent, id: string) => handleDelete(e, id);
 
   // 新增/编辑弹窗状态
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -124,7 +125,7 @@ export const ModelPicker: FC = () => {
         setLoading(false);
       }
     })();
-    const onAuthChange = (e: any) => {
+    const onAuthChange = (e: CustomEvent<{ kind: "login" | "logout" }>) => {
       // 登录后刷新模型列表；登出后清空 UI 并显示占位
       const kind = e?.detail?.kind as ("login" | "logout" | undefined);
       if (kind === "login") {
@@ -135,8 +136,8 @@ export const ModelPicker: FC = () => {
         setSelectedId("");
       }
     };
-    window.addEventListener(AUTH_CHANGED_EVENT, onAuthChange as any);
-    return () => { unsub(); window.removeEventListener(AUTH_CHANGED_EVENT, onAuthChange as any); };
+    window.addEventListener(AUTH_CHANGED_EVENT as unknown as string, onAuthChange as EventListener);
+    return () => { unsub(); window.removeEventListener(AUTH_CHANGED_EVENT as unknown as string, onAuthChange as EventListener); };
   }, []);
 
   // 
@@ -150,7 +151,7 @@ export const ModelPicker: FC = () => {
       const opts: ModelOption[] = modelService.getOptions();
       const mapped = opts.map(o => ({ name: o.name, value: o.value, icon: ICONS[o.iconKey] || openai }));
       setOptions(mapped);
-    } catch (_) {
+    } catch {
       // 忽略错误，保留现有选项
     } finally {
       setLoading(false);
@@ -271,7 +272,7 @@ export const ModelPicker: FC = () => {
                 // 如果本次触发来自“操作按钮区域”，则阻止该项被选中
                 if (actionClickRef.current) {
                   e.preventDefault();
-                  (e as any).stopPropagation?.();
+                  (e as unknown as { stopPropagation?: () => void }).stopPropagation?.();
                 }
               }}
             >

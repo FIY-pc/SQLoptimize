@@ -6,14 +6,12 @@ import Image from "next/image";
 import { ComponentPropsWithRef, type FC } from "react";
 
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import icon from "@/public/favicon/icon.svg";
 import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { ModelPicker } from "./ModelPicker";
 import { DatabasePicker } from "./DatabasePicker";
 import { SchemaPicker } from "./SchemaPicker";
-import { Thread } from "@/components/assistant-ui/thread";
 import { ThreadList } from "@/components/assistant-ui/thread-list";
 
 type ButtonWithTooltipProps = ComponentPropsWithRef<typeof Button> & {
@@ -99,9 +97,5 @@ const Header: FC = () => {
 };
 
 export const Shadcn: FC = () => {
-  const sideStyle = "bg-muted/40 px-3 py-2";
-  const topStyle = "border-b";
-  const leftStyle = "border-r hidden md:block";
-
   return <Header />;
 };

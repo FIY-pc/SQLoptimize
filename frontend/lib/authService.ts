@@ -38,7 +38,7 @@ type AuthChangedDetail = { kind: "login" | "logout" };
 function emitAuthChanged(kind: AuthChangedDetail["kind"]) {
     if (typeof window === "undefined") return;
     try {
-        window.dispatchEvent(new CustomEvent<AuthChangedDetail>(AUTH_CHANGED_EVENT as any, { detail: { kind } }));
+        window.dispatchEvent(new CustomEvent<AuthChangedDetail>(AUTH_CHANGED_EVENT as unknown as string, { detail: { kind } }));
     } catch { }
 }
 
@@ -77,7 +77,7 @@ export function clearAuth() {
     } catch { }
 }
 
-async function request<T>(path: string, body: any): Promise<T> {
+async function request<T>(path: string, body: unknown): Promise<T> {
     const res = await fetch(`${API_BASE}${path}`, {
         method: "POST",
         headers: {

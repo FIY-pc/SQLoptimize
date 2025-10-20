@@ -17,11 +17,23 @@ export interface OptimizeRequestPayload {
 export function buildOptimizeRequestPayload(body: ForwardBody): OptimizeRequestPayload {
     // 取最后一条 user 消息作为 SQL 输入
     const lastUser = [...body.messages].reverse().find(m => m.role === 'user');
-    const sql = lastUser?.parts.map(p => (p as any).text).filter(Boolean).join('\n') || '';
+    const parts = lastUser?.parts ?? [];
+    const texts: string[] = [];
+    for (const p of parts as unknown[]) {
+        if (typeof p === 'string') {
+            texts.push(p);
+            continue;
+        }
+        if (typeof p === 'object' && p !== null) {
+            const text = (p as Record<string, unknown>).text;
+            if (typeof text === 'string') texts.push(text);
+        }
+    }
+    const sql = texts.filter(Boolean).join('\n');
 
     // 可从 meta 读取控制项（可选）
     const meta = body.meta || {};
-    const stream = (meta as any).stream ?? true;
+    const stream = typeof meta.stream === 'boolean' ? meta.stream : true;
 
     const payload: OptimizeRequestPayload = {
         sql,

@@ -11,15 +11,15 @@ const BASE_URL = process.env.NEXT_PUBLIC_MODEL_SERVICE_URL || "http://127.0.0.1:
 // 错误类型
 // =========================
 export class HttpError extends Error {
-    constructor(message: string, public status: number, public data?: any) {
+    constructor(message: string, public status: number, public data?: unknown) {
         super(message);
     }
 }
 export class NotFoundError extends HttpError {
-    constructor(msg = "Not Found", data?: any) { super(msg, 404, data); }
+    constructor(msg = "Not Found", data?: unknown) { super(msg, 404, data); }
 }
 export class ValidationError extends HttpError {
-    constructor(msg = "Unprocessable Entity", data?: any) { super(msg, 422, data); }
+    constructor(msg = "Unprocessable Entity", data?: unknown) { super(msg, 422, data); }
 }
 
 // =========================
@@ -96,12 +96,12 @@ export const modelApi = {
             try { return await resp.json(); } catch { return { message: "OK" }; }
         }
 
-        let payload: any = undefined;
+        let payload: unknown = undefined;
         try {
             const ct = resp.headers.get("content-type") || "";
             if (ct.includes("application/json")) payload = await resp.json();
             else payload = await resp.text();
-        } catch (_) { /* ignore */ }
+        } catch { /* ignore */ }
 
         if (resp.status === 404) throw new NotFoundError("记录不存在", payload);
         if (resp.status === 422) throw new ValidationError("参数错误", payload);
@@ -145,12 +145,12 @@ export const modelApi = {
         });
         if (resp.status === 200 || resp.status === 204) return;
 
-        let payload: any = undefined;
+        let payload: unknown = undefined;
         try {
             const ct = resp.headers.get("content-type") || "";
             if (ct.includes("application/json")) payload = await resp.json();
             else payload = await resp.text();
-        } catch (_) { /* ignore */ }
+        } catch { /* ignore */ }
 
         if (resp.status === 404) throw new NotFoundError("记录不存在", payload);
         if (resp.status === 422) throw new ValidationError("参数错误", payload);
@@ -161,8 +161,8 @@ export const modelApi = {
 // =========================
 // 类型定义
 // =========================
-export type CreateModelConnection = Record<string, any>; // 可按后端实际细化
-export type UpdateModelConnection = Record<string, any>;
+export type CreateModelConnection = Record<string, unknown>; // 可按后端实际细化
+export type UpdateModelConnection = Record<string, unknown>;
 
 // 定义模型项（后端会返回已混淆的 api_key，可按需使用）
 export interface BackendModelItem {

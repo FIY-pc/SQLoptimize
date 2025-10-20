@@ -7,7 +7,9 @@ export const TOKEN_STORAGE_KEY = "MODEL_SERVICE_TOKEN";
 // 直接字面量访问以便 Next 在构建期内联变量，避免在浏览器端动态读取 process.env 失败
 function getEnvToken(): string | undefined {
     try {
-        const v = (process && (process as any).env && (process as any).env.NEXT_PUBLIC_MODEL_SERVICE_TOKEN) as string | undefined;
+        const v = (typeof process !== "undefined" && typeof process.env !== "undefined"
+            ? (process.env.NEXT_PUBLIC_MODEL_SERVICE_TOKEN as string | undefined)
+            : undefined);
         return v || undefined;
     } catch {
         return undefined;

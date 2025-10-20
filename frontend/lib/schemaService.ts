@@ -5,8 +5,8 @@ import { buildHeaders, createStore, createSelectedIdStorage } from "./serviceUti
 
 const BASE_URL = process.env.NEXT_PUBLIC_MODEL_SERVICE_URL || "http://127.0.0.1:8000";
 
-export type CreateDbSchema = Record<string, any>;
-export type UpdateDbSchema = Record<string, any>;
+export type CreateDbSchema = Record<string, unknown>;
+export type UpdateDbSchema = Record<string, unknown>;
 
 export interface BackendDbSchemaItem {
     id: number;
@@ -15,7 +15,7 @@ export interface BackendDbSchemaItem {
     created_at: string;
     updated_at: string;
     user_id: number;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 export interface ListDbSchemasResponse {
@@ -51,7 +51,7 @@ export const schemaApi = {
         const url = new URL("/api/schemas/active", BASE_URL);
         const resp = await fetch(url.toString(), { method: "GET", headers: buildHeaders(false), redirect: "follow" });
         if (resp.ok) return (await resp.json()) as BackendDbSchemaItem;
-        let payload: any = undefined;
+        let payload: unknown = undefined;
         try { const ct = resp.headers.get("content-type") || ""; payload = ct.includes("application/json") ? await resp.json() : await resp.text(); } catch { }
         if (resp.status === 404) throw new NotFoundError("未找到活跃数据库模式", payload);
         if (resp.status === 422) throw new ValidationError("参数错误", payload);
@@ -79,7 +79,7 @@ export const schemaApi = {
         const url = new URL("/api/schemas/active", BASE_URL);
         const resp = await fetch(url.toString(), { method: "POST", headers: buildHeaders(true), body: JSON.stringify({ schema_id: Number(schemaId) }), redirect: "follow" });
         if (resp.ok) { try { return await resp.json(); } catch { return { message: "OK" }; } }
-        let payload: any = undefined;
+        let payload: unknown = undefined;
         try { const ct = resp.headers.get("content-type") || ""; payload = ct.includes("application/json") ? await resp.json() : await resp.text(); } catch { }
         if (resp.status === 404) throw new NotFoundError("记录不存在", payload);
         if (resp.status === 422) throw new ValidationError("参数错误", payload);
@@ -89,7 +89,7 @@ export const schemaApi = {
         const url = new URL(`/api/schemas/${encodeURIComponent(String(schemaId))}`, BASE_URL);
         const resp = await fetch(url.toString(), { method: "GET", headers: buildHeaders(false), redirect: "follow" });
         if (resp.ok) return (await resp.json()) as BackendDbSchemaItem;
-        let payload: any = undefined;
+        let payload: unknown = undefined;
         try { const ct = resp.headers.get("content-type") || ""; payload = ct.includes("application/json") ? await resp.json() : await resp.text(); } catch { }
         if (resp.status === 404) throw new NotFoundError("数据库模式不存在", payload);
         if (resp.status === 422) throw new ValidationError("参数错误", payload);
@@ -105,7 +105,7 @@ export const schemaApi = {
         const url = new URL(`/api/schemas/${encodeURIComponent(String(schemaId))}`, BASE_URL);
         const resp = await fetch(url.toString(), { method: "DELETE", headers: buildHeaders(false), redirect: "follow" });
         if (resp.status === 200 || resp.status === 204) return;
-        let payload: any = undefined;
+        let payload: unknown = undefined;
         try { const ct = resp.headers.get("content-type") || ""; payload = ct.includes("application/json") ? await resp.json() : await resp.text(); } catch { }
         if (resp.status === 404) throw new NotFoundError("数据库模式不存在", payload);
         if (resp.status === 422) throw new ValidationError("参数错误", payload);

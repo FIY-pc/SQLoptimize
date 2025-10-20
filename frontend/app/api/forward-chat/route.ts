@@ -5,7 +5,7 @@ export async function POST(req: Request) {
     let body: ForwardBody;
     try {
         body = await req.json();
-    } catch (e) {
+    } catch {
         return new Response(JSON.stringify({ error: "请求体必须是合法 JSON" }), {
             status: 400,
             headers: { "content-type": "application/json" },
@@ -53,7 +53,8 @@ export async function POST(req: Request) {
             return createAssistantUIErrorStream("后端返回了空的流");
         }
         return toAssistantUIResponse(resp.body);
-    } catch (err: any) {
-        return createAssistantUIErrorStream("调用外部后端失败", err?.message);
+    } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return createAssistantUIErrorStream("调用外部后端失败", message);
     }
 }
