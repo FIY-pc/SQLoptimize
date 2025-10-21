@@ -22,12 +22,12 @@ def input_node(state: SQLState) -> SQLState:
     return state
 
 
-def get_query_plan_node(state: SQLState) -> SQLState:
+async def get_query_plan_node(state: SQLState) -> SQLState:
     logger.debug(f"call get_query_plan_node")
     database = state.get("database")
     if not database:
         raise ValueError("database is required")
-    ok, plan_text = run_explain(state, state.get("sql", ""), database=database)
+    ok, plan_text = await run_explain(state, state.get("sql", ""), database=database)
     state["plan"] = plan_text
     # state.setdefault("history", []).append(
     #     "[get_plan] 成功获取查询计划" if ok else f"[get_plan] 计划获取失败：{plan_text}"
@@ -35,13 +35,13 @@ def get_query_plan_node(state: SQLState) -> SQLState:
     return state
 
 
-def get_stats_node(state: SQLState) -> SQLState:
+async def get_stats_node(state: SQLState) -> SQLState:
     logger.debug(f"call get_stats_node")
     stats = {}
     database = state.get("database")
     if not database:
         raise ValueError("database is required")
-    stats = fetch_db_stats(state, state.get("sql", ""), database=database)
+    stats = await fetch_db_stats(state, state.get("sql", ""), database=database)
     state["stats"] = stats
     # state.setdefault("history", []).append(
     #     "[get_stats] 成功获取统计信息" if stats.get("collection_success") else "[get_stats] 统计信息获取失败或部分失败"
@@ -49,13 +49,13 @@ def get_stats_node(state: SQLState) -> SQLState:
     return state
 
 
-def optimize_sql_node_wrapper(state: SQLState) -> SQLState:
+async def optimize_sql_node_wrapper(state: SQLState) -> SQLState:
     logger.debug(f"call optimize_sql_node_wrapper")
     state["iteration_count"] = int(state.get("iteration_count", 0)) + 1
-    return optimize_sql_node(state) 
+    return await optimize_sql_node(state) 
 
 
-def equivalence_check_node(state: SQLState) -> SQLState:
+async def equivalence_check_node(state: SQLState) -> SQLState:
     """检查当前方案的等价性"""
     logger.debug(f"call equivalence_check_node")
     current_index = state.get("current_plan_index", 0)
@@ -64,7 +64,7 @@ def equivalence_check_node(state: SQLState) -> SQLState:
     if 0 <= current_index < len(plans):
         current_plan = plans[current_index]
         
-        result = run_equivalence_checker(
+        result = await run_equivalence_checker(
             sql1=state.get("sql", ""),
             sql2=current_plan.get("optimized_sql", ""),
             db_schema=state.get("db_schema")
@@ -80,7 +80,7 @@ def equivalence_check_node(state: SQLState) -> SQLState:
             # hist.append(f"[check_eq] 方案{current_index+1}工具校验：{'等价' if is_equivalent else '不等价'}")
         else:
             from src.graph.agent.llm_nodes import llm_equivalence_check  
-            llm_res = llm_equivalence_check(
+            llm_res = await llm_equivalence_check(
                 state=state,
                 sql1=state.get("sql", ""),
                 sql2=current_plan.get("optimized_sql", ""),
@@ -102,7 +102,7 @@ def equivalence_check_node(state: SQLState) -> SQLState:
     return state
 
 
-def get_costs_node(state: SQLState) -> SQLState:
+async def get_costs_node(state: SQLState) -> SQLState:
     """获取当前方案的成本估算"""
     logger.debug(f"call get_costs_node")
     current_index = state.get("current_plan_index", 0)
@@ -117,11 +117,11 @@ def get_costs_node(state: SQLState) -> SQLState:
     database = state.get("database")
     if not database:
         raise ValueError("database is required")
-    before = run_explain_cost(state, state.get("sql", ""), database=database)
+    before = await run_explain_cost(state, state.get("sql", ""), database=database)
     
     if 0 <= current_index < len(plans):
         current_plan = plans[current_index]
-        after = run_explain_cost(state, current_plan.get("optimized_sql", ""), database=database)
+        after = await run_explain_cost(state, current_plan.get("optimized_sql", ""), database=database)
         
         current_plan["cost"] = after
         plans[current_index] = current_plan
@@ -171,9 +171,9 @@ def should_process_next_plan(state: SQLState) -> str:
         return "report"
 
 
-def final_report_node_wrapper(state: SQLState) -> SQLState:
+async def final_report_node_wrapper(state: SQLState) -> SQLState:
     logger.debug(f"call final_report_node_wrapper")
-    return final_report_node(state)  # type: ignore
+    return await final_report_node(state)  # type: ignore
 
 
 def should_retry_after_equivalence(state: SQLState) -> str:

@@ -5,7 +5,7 @@ from src.config import get_settings
 from src.graph.state import SQLState
 
 
-def run_explain(state: SQLState ,sql: str, database: Optional[str] = None) -> Tuple[bool, str]:
+async def run_explain(state: SQLState ,sql: str, database: Optional[str] = None) -> Tuple[bool, str]:
     """
     获取查询计划（优先 MySQL，回退 SQLite）。
     返回 (success, plan_text)
@@ -17,11 +17,11 @@ def run_explain(state: SQLState ,sql: str, database: Optional[str] = None) -> Tu
     
     if mysql_utils:
         try:
-            conn_test = mysql_utils.test_mysql_connection()
+            conn_test = await mysql_utils.test_mysql_connection()
             if not conn_test["success"]:
                 return False, f"MySQL连接失败: {conn_test.get('error', '未知错误')}"
 
-            plan_result = mysql_utils.get_mysql_explain_plan(sql, database or settings.mysql_database)
+            plan_result = await mysql_utils.get_mysql_explain_plan(sql, database or settings.mysql_database)
             if plan_result["success"]:
                 parts = []
                 if plan_result.get("explain_json"):
@@ -66,7 +66,7 @@ def run_explain(state: SQLState ,sql: str, database: Optional[str] = None) -> Tu
         return False, f"SQLite EXPLAIN失败: {e}"
 
 
-def run_explain_cost(state: SQLState, sql: str, database: Optional[str] = None) -> Optional[float]:
+async def run_explain_cost(state: SQLState, sql: str, database: Optional[str] = None) -> Optional[float]:
     """
     提取 EXPLAIN (FORMAT JSON) 的成本估计（若可用）。
     当前使用 MySQL 的 JSON EXPLAIN（如果包含 cost_info 则返回其中的总成本或近似）。
@@ -77,7 +77,7 @@ def run_explain_cost(state: SQLState, sql: str, database: Optional[str] = None) 
     settings = get_settings()
     if mysql_utils:
         try:
-            plan_result = mysql_utils.get_mysql_explain_plan(sql, database or settings.mysql_database)
+            plan_result = await mysql_utils.get_mysql_explain_plan(sql, database or settings.mysql_database)
             if plan_result["success"] and plan_result.get("explain_json"):
                 explain_json = plan_result["explain_json"]
 
@@ -143,7 +143,7 @@ def run_explain_cost(state: SQLState, sql: str, database: Optional[str] = None) 
     return None
 
 
-def fetch_db_stats(state: SQLState, sql: str, database: Optional[str] = None) -> Dict[str, Any]:
+async def fetch_db_stats(state: SQLState, sql: str, database: Optional[str] = None) -> Dict[str, Any]:
     """
     获取数据库统计信息
     返回包含表信息、列、索引、以及采集过程中的错误。
@@ -162,7 +162,7 @@ def fetch_db_stats(state: SQLState, sql: str, database: Optional[str] = None) ->
             import re
             import json
 
-            def ask_llm_for_tables(sql_text: str, explain_json_text: Optional[str]) -> set[str]:
+            async def ask_llm_for_tables(sql_text: str, explain_json_text: Optional[str]) -> set[str]:
                 try:
                     llm = state.get("llm")
                     if llm is None:
@@ -212,7 +212,7 @@ def fetch_db_stats(state: SQLState, sql: str, database: Optional[str] = None) ->
                 ]
 
                 try:
-                    content = llm.chat(messages=messages, temperature=0.0, max_tokens=512)
+                    content = await llm.chat_async(messages=messages, temperature=0.0, max_tokens=512)
                 except Exception as e:
                     stats["collection_errors"].append(f"LLM 表名提取调用失败：{e}")
                     return set()
@@ -289,10 +289,10 @@ def fetch_db_stats(state: SQLState, sql: str, database: Optional[str] = None) ->
 
                 return {t for t in tables if t not in cte_names}
 
-            ok, explain_json = run_explain(state, sql, database or settings.mysql_database)
+            ok, explain_json = await run_explain(state, sql, database or settings.mysql_database)
 
             # 1) 优先用 LLM（中文提示词）
-            table_candidates: set[str] = ask_llm_for_tables(sql, explain_json if ok else None)
+            table_candidates: set[str] = await ask_llm_for_tables(sql, explain_json if ok else None)
 
             # 2) LLM 为空则回退到 EXPLAIN JSON 的确定性解析
             if not table_candidates and ok and explain_json:
@@ -317,7 +317,7 @@ def fetch_db_stats(state: SQLState, sql: str, database: Optional[str] = None) ->
                 stats["table_statistics"].setdefault(tbl, {})
 
             for tbl in normalized:
-                res = mysql_utils.get_mysql_table_statistics(tbl, database or settings.mysql_database)
+                res = await mysql_utils.get_mysql_table_statistics(tbl, database or settings.mysql_database)
                 if res.get("success"):
                     stats["table_statistics"][tbl] = res.get("statistics", {})
                 else:

@@ -34,7 +34,7 @@ def _extract_explanation_from_text(text: str) -> str:
         return before.strip()
     return text.strip()
 
-def optimize_sql_node(state: SQLState) -> SQLState:
+async def optimize_sql_node(state: SQLState) -> SQLState:
     """
     LLM Node: OptimizeSQL
     输入：state["sql"], state["plan"], state["stats"]
@@ -82,7 +82,7 @@ def optimize_sql_node(state: SQLState) -> SQLState:
     ]
     try:
         llm = state.get("llm")
-        content = llm.chat(messages)
+        content = await llm.chat_async(messages)
         explanation = _extract_explanation_from_text(content)
         optimized_sql = _extract_sql_from_text(content)
         state["rewrite_explanation"] = explanation
@@ -93,7 +93,7 @@ def optimize_sql_node(state: SQLState) -> SQLState:
         pass
     return state
 
-def llm_equivalence_check(state: SQLState, sql1: str, sql2: str, db_schema: Optional[str] = None) -> Dict[str, Any]:
+async def llm_equivalence_check(state: SQLState, sql1: str, sql2: str, db_schema: Optional[str] = None) -> Dict[str, Any]:
     logger.debug(f"call llm_equivalence_check")
     messages = [
         {
@@ -117,7 +117,7 @@ def llm_equivalence_check(state: SQLState, sql1: str, sql2: str, db_schema: Opti
     ]
     try:
         llm = state.get("llm")
-        content = llm.chat(messages)
+        content = await llm.chat_async(messages)
         import re, json
         m = re.search(r'```json\s*(.*?)\s*```', content, re.DOTALL)
         json_str = m.group(1) if m else content
@@ -133,7 +133,7 @@ def llm_equivalence_check(state: SQLState, sql1: str, sql2: str, db_schema: Opti
             "error": str(e),
         }
 
-def final_report_node(state: SQLState) -> SQLState:
+async def final_report_node(state: SQLState) -> SQLState:
     """
     LLM Node: FinalReport
     整合多个优化方案的结果并输出综合报告
@@ -197,7 +197,7 @@ def final_report_node(state: SQLState) -> SQLState:
     
     try:
         llm = state.get("llm")
-        report = llm.chat(messages)
+        report = await llm.chat_async(messages)
         state["final_report"] = report
         # state.setdefault("history", []).append("[report] 已生成最终优化报告")
     except Exception as e:

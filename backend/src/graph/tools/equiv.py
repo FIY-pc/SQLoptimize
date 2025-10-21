@@ -3,7 +3,7 @@ from src.sql_equality.test import verify_sql_equivalence
 from src.config import get_settings
 
 
-def run_equivalence_checker(
+async def run_equivalence_checker(
     sql1: str,
     sql2: str,
     db_schema: Optional[str] = None
@@ -71,7 +71,7 @@ def run_equivalence_checker(
                     # 确定数据库名
                     db_name = settings.mysql_database or None
                     for tbl in table_names:
-                        res = mysql_utils.get_mysql_table_statistics(tbl, db_name)
+                        res = await mysql_utils.get_mysql_table_statistics(tbl, db_name)
                         if not res.get("success"):
                             continue
                         stats = res.get("statistics") or {}

@@ -41,21 +41,23 @@ class MySQLUtils(DatabaseRegistry):
         database_url = f"mysql+pymysql://{settings.mysql_user}:{settings.mysql_password or ''}@{settings.mysql_host}:{settings.mysql_port}/{settings.mysql_database or ''}"
         return cls(database_url)
 
-    def get_mysql_explain_plan(self, sql: str, database: Optional[str] = None) -> Dict[str, Any]:
+    async def get_mysql_explain_plan(self, sql: str, database: Optional[str] = None) -> Dict[str, Any]:
         """获取MySQL执行计划"""
         try:
-            with self.session() as session:
+            async with self.async_session() as session:
                 # 切换到指定数据库
                 if database:
-                    session.execute(text(f"USE `{database}`"))
+                    await session.execute(text(f"USE `{database}`"))
 
                 # 获取JSON格式的执行计划
                 explain_json_sql = text(f"EXPLAIN FORMAT=JSON {sql}")
-                explain_json_result = session.execute(explain_json_sql).fetchone()
+                explain_json_result = await session.execute(explain_json_sql)
+                explain_json_result = explain_json_result.fetchone()
 
                 # 获取传统格式的执行计划作为备用
                 explain_traditional_sql = text(f"EXPLAIN {sql}")
-                explain_traditional_result = session.execute(explain_traditional_sql).fetchall()
+                explain_traditional_result = await session.execute(explain_traditional_sql)
+                explain_traditional_result = explain_traditional_result.fetchall()
 
                 return {
                     "success": True,
@@ -73,16 +75,17 @@ class MySQLUtils(DatabaseRegistry):
             }
 
 
-    def get_mysql_table_statistics(self, table_name: str, database: Optional[str] = None) -> Dict[str, Any]:
+    async def get_mysql_table_statistics(self, table_name: str, database: Optional[str] = None) -> Dict[str, Any]:
         """获取MySQL表统计信息"""
         try:
-            with self.session() as session:
+            async with self.async_session() as session:
                 # 切换到指定数据库
                 if database:
-                    session.execute(text(f"USE `{database}`"))
+                    await session.execute(text(f"USE `{database}`"))
                     db_name = database
                 else:
-                    result = session.execute(text("SELECT DATABASE()")).fetchone()
+                    result = await session.execute(text("SELECT DATABASE()"))
+                    result = result.fetchone()
                     db_name = result[0] if result else None
 
                 if not db_name:
@@ -97,7 +100,8 @@ class MySQLUtils(DatabaseRegistry):
                     FROM INFORMATION_SCHEMA.TABLES
                     WHERE TABLE_SCHEMA = :db_name AND TABLE_NAME = :table_name
                 """)
-                table_info_result = session.execute(table_info_sql, {"db_name": db_name, "table_name": table_name}).fetchone()
+                table_info_result = await session.execute(table_info_sql, {"db_name": db_name, "table_name": table_name})
+                table_info_result = table_info_result.fetchone()
                 statistics['table_info'] = dict(table_info_result._mapping) if table_info_result else None
 
                 # 2. 列信息
@@ -108,7 +112,8 @@ class MySQLUtils(DatabaseRegistry):
                     WHERE TABLE_SCHEMA = :db_name AND TABLE_NAME = :table_name
                     ORDER BY ORDINAL_POSITION
                 """)
-                columns_result = session.execute(columns_sql, {"db_name": db_name, "table_name": table_name}).fetchall()
+                columns_result = await session.execute(columns_sql, {"db_name": db_name, "table_name": table_name})
+                columns_result = columns_result.fetchall()
                 statistics['columns'] = [dict(row._mapping) for row in columns_result]
 
                 # 3. 索引信息
@@ -119,7 +124,8 @@ class MySQLUtils(DatabaseRegistry):
                     WHERE TABLE_SCHEMA = :db_name AND TABLE_NAME = :table_name
                     ORDER BY INDEX_NAME, SEQ_IN_INDEX
                 """)
-                indexes_result = session.execute(indexes_sql, {"db_name": db_name, "table_name": table_name}).fetchall()
+                indexes_result = await session.execute(indexes_sql, {"db_name": db_name, "table_name": table_name})
+                indexes_result = indexes_result.fetchall()
                 statistics['indexes'] = [dict(row._mapping) for row in indexes_result]
 
                 # 4. 外键与约束信息（用于标识外键列）
@@ -128,7 +134,8 @@ class MySQLUtils(DatabaseRegistry):
                     FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
                     WHERE TABLE_SCHEMA = :db_name AND TABLE_NAME = :table_name
                 """)
-                key_usage_result = session.execute(key_usage_sql, {"db_name": db_name, "table_name": table_name}).fetchall()
+                key_usage_result = await session.execute(key_usage_sql, {"db_name": db_name, "table_name": table_name})
+                key_usage_result = key_usage_result.fetchall()
                 key_usage_rows = [dict(row._mapping) for row in key_usage_result]
 
                 # 5. 组装列级统计（与用户示例字段一致）
@@ -239,17 +246,19 @@ class MySQLUtils(DatabaseRegistry):
             }
 
 
-    def get_database_schemas(self, pattern: Optional[str] = None) -> Dict[str, Any]:
+    async def get_database_schemas(self, pattern: Optional[str] = None) -> Dict[str, Any]:
         """获取数据库schema信息"""
         try:
-            with self.session() as session:
+            async with self.async_session() as session:
                 # 获取数据库列表
                 if pattern:
                     databases_sql = text("SHOW DATABASES LIKE :pattern")
-                    result = session.execute(databases_sql, {"pattern": pattern}).fetchall()
+                    result = await session.execute(databases_sql, {"pattern": pattern})
+                    result = result.fetchall()
                 else:
                     databases_sql = text("SHOW DATABASES")
-                    result = session.execute(databases_sql).fetchall()
+                    result = await session.execute(databases_sql)
+                    result = result.fetchall()
 
                 databases = [row[0] for row in result]
 
@@ -266,15 +275,16 @@ class MySQLUtils(DatabaseRegistry):
             }
 
 
-    def get_tpch_tables_info(self, database: str = "tpch_1g") -> Dict[str, Any]:
+    async def get_tpch_tables_info(self, database: str = "tpch_1g") -> Dict[str, Any]:
         """获取TPCH基准测试数据集的表信息"""
         try:
-            with self.session() as session:
+            async with self.async_session() as session:
                 # 切换到TPCH数据库
-                session.execute(text(f"USE `{database}`"))
+                await session.execute(text(f"USE `{database}`"))
 
                 # 获取所有表
-                tables_result = session.execute(text("SHOW TABLES")).fetchall()
+                tables_result = await session.execute(text("SHOW TABLES"))
+                tables_result = tables_result.fetchall()
                 tables = [row[0] for row in tables_result]
 
                 tpch_info = {
@@ -284,7 +294,7 @@ class MySQLUtils(DatabaseRegistry):
 
                 # 获取每个表的详细信息
                 for table in tables:
-                    table_stats = self.get_mysql_table_statistics(table, database)
+                    table_stats = await self.get_mysql_table_statistics(table, database)
                     if table_stats["success"]:
                         tpch_info["tables"][table] = table_stats["statistics"]
 
@@ -302,12 +312,14 @@ class MySQLUtils(DatabaseRegistry):
             }
 
 
-    def test_mysql_connection(self) -> Dict[str, Any]:
+    async def test_mysql_connection(self) -> Dict[str, Any]:
         """测试MySQL连接"""
         try:
-            with self.session() as session:
-                version_result = session.execute(text("SELECT VERSION() as version")).fetchone()
-                db_result = session.execute(text("SELECT DATABASE() as current_db")).fetchone()
+            async with self.async_session() as session:
+                version_result = await session.execute(text("SELECT VERSION() as version"))
+                version_result = version_result.fetchone()
+                db_result = await session.execute(text("SELECT DATABASE() as current_db"))
+                db_result = db_result.fetchone()
 
                 return {
                     "success": True,
