@@ -104,7 +104,7 @@ async def execute_pipeline_stream(
                 continue
             yield message_chunk, metadata
     except Exception as e:
-        logger.error(f"Error in execute_pipeline_stream: {e}, chunk: {chunk}")
+        logger.error(f"Error in execute_pipeline_stream: {e}")
         # 发送错误消息
         error_message = create_error_message(str(e), get_unix_timestamp())
         yield error_message, {"error": True}
