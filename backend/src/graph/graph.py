@@ -6,7 +6,7 @@ from langgraph.graph.state import CompiledStateGraph
 from src.graph.state import SQLState
 from src.graph.tools.db_tools import run_explain, fetch_db_stats, run_explain_cost
 from src.graph.tools.equiv import run_equivalence_checker
-from src.graph.agent.llm_nodes import optimize_sql_node, final_report_node, generate_optimization_plans
+from src.graph.agent.llm_nodes import final_report_node, generate_optimization_plans, fix_sql_with_explain_error, fix_sql_with_equivalence_reason
 import logging
 from src.config import get_settings
 from src.graph.dev.defalt_setting import default_setting_node
@@ -25,34 +25,18 @@ def input_node(state: SQLState) -> SQLState:
 async def get_query_plan_node(state: SQLState) -> SQLState:
     logger.debug(f"call get_query_plan_node")
     database = state.get("database")
-    if not database:
-        raise ValueError("database is required")
     ok, plan_text = await run_explain(state, state.get("sql", ""), database=database)
     state["plan"] = plan_text
-    # state.setdefault("history", []).append(
-    #     "[get_plan] 成功获取查询计划" if ok else f"[get_plan] 计划获取失败：{plan_text}"
-    # )
     return state
 
 
 async def get_stats_node(state: SQLState) -> SQLState:
     logger.debug(f"call get_stats_node")
-    stats = {}
     database = state.get("database")
-    if not database:
-        raise ValueError("database is required")
     stats = await fetch_db_stats(state, state.get("sql", ""), database=database)
     state["stats"] = stats
-    # state.setdefault("history", []).append(
-    #     "[get_stats] 成功获取统计信息" if stats.get("collection_success") else "[get_stats] 统计信息获取失败或部分失败"
-    # )
     return state
 
-
-async def optimize_sql_node_wrapper(state: SQLState) -> SQLState:
-    logger.debug(f"call optimize_sql_node_wrapper")
-    state["iteration_count"] = int(state.get("iteration_count", 0)) + 1
-    return await optimize_sql_node(state) 
 
 
 async def equivalence_check_node(state: SQLState) -> SQLState:
@@ -70,14 +54,21 @@ async def equivalence_check_node(state: SQLState) -> SQLState:
             db_schema=state.get("db_schema")
         )
         
-        # hist = state.setdefault("history", [])
-        
         if result.get("success"):
             is_equivalent = bool(result.get("equivalent", False))
             current_plan["equivalence"] = is_equivalent
+            # 记录工具返回的原因（details），仅在不等价时保存
+            if not is_equivalent:
+                reason = str(result.get("details") or "")
+                current_plan["equivalence_reason"] = reason
+                state["equivalence_reason"] = reason
+                state["need_fix_equivalence"] = True
+            else:
+                current_plan["equivalence_reason"] = ""
+                state["equivalence_reason"] = ""
+                state["need_fix_equivalence"] = False
             plans[current_index] = current_plan
             state["equivalence"] = is_equivalent
-            # hist.append(f"[check_eq] 方案{current_index+1}工具校验：{'等价' if is_equivalent else '不等价'}")
         else:
             from src.graph.agent.llm_nodes import llm_equivalence_check  
             llm_res = await llm_equivalence_check(
@@ -88,18 +79,41 @@ async def equivalence_check_node(state: SQLState) -> SQLState:
             )
             is_equivalent = bool(llm_res.get("equivalent", False)) if llm_res.get("success") else False
             current_plan["equivalence"] = is_equivalent
+            # 保存 LLM 的不等价原因
+            reason = str(llm_res.get("reason") or "")
+            current_plan["equivalence_reason"] = "" if is_equivalent else reason
+            state["equivalence_reason"] = "" if is_equivalent else reason
+            state["need_fix_equivalence"] = not is_equivalent
             plans[current_index] = current_plan
             state["equivalence"] = is_equivalent
-            # if llm_res.get("success"):
-            #     hist.append(f"[check_eq] 方案{current_index+1}工具失败，LLM 校验：{'等价' if is_equivalent else '不等价'}")
-            # else:
-            #     hist.append(f"[check_eq] 方案{current_index+1}工具和 LLM 均校验失败：{llm_res.get('error', '未知错误')}")
-            #     state["equivalence"] = False
     else:
-        # state.setdefault("history", []).append(f"[check_eq] 无效的方案索引: {current_index}")
         state["equivalence"] = False
         
     return state
+
+def route_after_equivalence(state: SQLState) -> str:
+    """等价性检查后的路由：等价→get_costs；不等价→fix_equivalence/next_plan/report"""
+    logger.debug(f"call route_after_equivalence")
+    if state.get("equivalence", False):
+        return "get_costs"
+
+    current_index = int(state.get("current_plan_index", 0))
+    plans = state.get("optimization_plans", [])
+    max_iters = int(state.get("max_iterations", 2) or 2)
+
+    # 当前方案的已尝试次数
+    attempts = 0
+    if 0 <= current_index < len(plans):
+        attempts = int(plans[current_index].get("eq_fix_attempts", 0))
+
+    # 未达上限 → 继续修复
+    if attempts < max_iters:
+        return "fix_equivalence"
+
+    # 达到上限 → 若有下一方案则切换，否则报告
+    if current_index + 1 < len(plans):
+        return "next_plan"
+    return "report"
 
 
 async def get_costs_node(state: SQLState) -> SQLState:
@@ -107,36 +121,65 @@ async def get_costs_node(state: SQLState) -> SQLState:
     logger.debug(f"call get_costs_node")
     current_index = state.get("current_plan_index", 0)
     plans = state.get("optimization_plans", [])
-    
+
     if not bool(state.get("equivalence", False)):
-        # state.setdefault("history", []).append(f"[get_costs] 跳过方案{current_index+1}成本估算：未通过等价性验证")
         state["cost_before"] = None
         state["cost_after"] = None
         return state
 
     database = state.get("database")
-    if not database:
-        raise ValueError("database is required")
+
     before = await run_explain_cost(state, state.get("sql", ""), database=database)
-    
+
     if 0 <= current_index < len(plans):
         current_plan = plans[current_index]
-        after = await run_explain_cost(state, current_plan.get("optimized_sql", ""), database=database)
-        
+
+        # 同步最新修复的 SQL（若与方案中的不一致）
+        after_sql = (current_plan.get("optimized_sql") or "").strip()
+        fixed_candidate = (state.get("optimized_sql") or "").strip()
+        if fixed_candidate and fixed_candidate != after_sql:
+            after_sql = fixed_candidate
+            current_plan["optimized_sql"] = fixed_candidate
+            plans[current_index] = current_plan
+            state["optimization_plans"] = plans
+
+        after = await run_explain_cost(state, after_sql, database=database)
+
+        if before is None or after is None:
+            err = None
+            mysql_utils = state.get("mysql_utils")
+            try:
+                if after is None and mysql_utils:
+                    r2 = await mysql_utils.get_mysql_explain_plan(current_plan.get("optimized_sql", ""), database=database)
+                    if not r2.get("success"):
+                        err = r2.get("error")
+                elif before is None and mysql_utils:
+                    r1 = await mysql_utils.get_mysql_explain_plan(state.get("sql", ""), database=database)
+                    if not r1.get("success"):
+                        err = r1.get("error")
+            except Exception as e:
+                err = str(e)
+
+            if err:
+                state["explain_error"] = err
+                state["need_fix_sql"] = True
+                current_plan["cost"] = None
+                plans[current_index] = current_plan
+                state["optimization_plans"] = plans
+                state["cost_before"] = before
+                state["cost_after"] = None
+                return state
+
         current_plan["cost"] = after
         plans[current_index] = current_plan
-        
+        state["optimization_plans"] = plans
+
         state["cost_before"] = before
         state["cost_after"] = after
-        
-        # state.setdefault("history", []).append(
-        #     f"[get_costs] 已获取方案{current_index+1}成本估算：改写前={before}, 改写后={after}"
-        # )
     else:
-        # state.setdefault("history", []).append(f"[get_costs] 无效的方案索引: {current_index}")
         state["cost_before"] = before
         state["cost_after"] = None
-        
+
     return state
 
 
@@ -147,10 +190,12 @@ def next_plan_node(state: SQLState) -> SQLState:
     plans = state.get("optimization_plans", [])
     
     next_index = current_index + 1
-    
     if next_index < len(plans):
         state["current_plan_index"] = next_index
         state["optimized_sql"] = plans[next_index]["optimized_sql"]
+        # 清理等价性修复标记，避免遗留状态影响新方案
+        state["equivalence_reason"] = ""
+        state["need_fix_equivalence"] = False
         # state.setdefault("history", []).append(f"[next_plan] 切换到方案 {next_index+1}")
     else:
         # state.setdefault("history", []).append("[next_plan] 所有方案已处理完毕")
@@ -162,9 +207,10 @@ def next_plan_node(state: SQLState) -> SQLState:
 def should_process_next_plan(state: SQLState) -> str:
     """决定是否处理下一个方案"""
     logger.debug(f"call should_process_next_plan")
+    if bool(state.get("need_fix_sql", False)) or bool(state.get("explain_error")):
+        return "fix_sql"
     current_index = state.get("current_plan_index", 0)
     plans = state.get("optimization_plans", [])
-    
     if current_index + 1 < len(plans):
         return "next_plan"
     else:
@@ -215,6 +261,9 @@ def build_sqlopt_graph() -> CompiledStateGraph[Any, Any, Any, Any]:
     graph.add_node("generate_plans", generate_optimization_plans)  
     graph.add_node("check_equivalence", equivalence_check_node)
     graph.add_node("get_costs", get_costs_node)
+    graph.add_node("fix_sql", fix_sql_with_explain_error)
+    # 新增：等价性修复节点
+    graph.add_node("fix_equivalence", fix_sql_with_equivalence_reason)
     graph.add_node("next_plan", next_plan_node)  
     graph.add_node("report", final_report_node_wrapper)
     
@@ -230,25 +279,32 @@ def build_sqlopt_graph() -> CompiledStateGraph[Any, Any, Any, Any]:
     graph.add_edge("get_stats", "generate_plans")  
     graph.add_edge("generate_plans", "check_equivalence")
     
-    # 等价性检查后的路径
+    # 等价性检查后的路径（修改：非等价进入修复）
     graph.add_conditional_edges(
         "check_equivalence",
-        lambda state: "get_costs" if state.get("equivalence", False) else "report",
+        route_after_equivalence,
         {
             "get_costs": "get_costs",
+            "fix_equivalence": "fix_equivalence",
+            "next_plan": "next_plan",
             "report": "report"
         }
     )
-    
-    # 成本估算后的路径
+
+    # 修复后回到等价性校验
+    graph.add_edge("fix_equivalence", "check_equivalence")
+
+    # 成本估算后的路径（已有）
     graph.add_conditional_edges(
         "get_costs",
         should_process_next_plan,
         {
             "next_plan": "next_plan",
+            "fix_sql": "fix_sql",
             "report": "report"
         }
     )
+    graph.add_edge("fix_sql", "get_costs")
     
     # 处理下一个方案
     graph.add_edge("next_plan", "check_equivalence")

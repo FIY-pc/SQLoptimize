@@ -8,9 +8,14 @@ class InputState(TypedDict, total=False):
     db_schema: Optional[str]
     database: Optional[str]
     max_iterations: int
-    llm: LLMClient
-    mysql_utils: MySQLUtils
-    fallback_sqlite: Optional[sqlite3.Connection]
+    # llm: LLMClient
+    # mysql_utils: MySQLUtils
+    # fallback_sqlite: Optional[sqlite3.Connection]
+
+    # 为了在langgraph中测试，将依赖的类转换为Any类型
+    llm: Any
+    mysql_utils: Any
+    fallback_sqlite: Any
 
 class OptimizationPlan(TypedDict, total=False):
     plan_id: str
@@ -19,6 +24,8 @@ class OptimizationPlan(TypedDict, total=False):
     reasoning: str
     equivalence: bool
     cost: Optional[float]
+    equivalence_reason: str
+    eq_fix_attempts: int
 
 
 class SQLState(MessagesState, total=False):
@@ -45,14 +52,26 @@ class SQLState(MessagesState, total=False):
     # 重试控制
     iteration_count: int
     max_iterations: int
+
+    # 语法规范修复相关
+    explain_error: Optional[str]
+    need_fix_sql: bool
+    # 等价性修复相关
+    equivalence_reason: Optional[str]
+    need_fix_equivalence: bool
     
     # 最终报告
     final_report: str
 
     # 依赖
-    llm: LLMClient
-    mysql_utils: MySQLUtils
-    fallback_sqlite: Optional[sqlite3.Connection]
+    # llm: LLMClient
+    # mysql_utils: MySQLUtils
+    # fallback_sqlite: Optional[sqlite3.Connection]
+
+    # 为了在langgraph中测试，将依赖的类转换为Any类型
+    llm: Any
+    mysql_utils: Any
+    fallback_sqlite: Any
 
 def build_initial_state(
     input_state: InputState
@@ -73,7 +92,13 @@ def build_initial_state(
         "cost_after": None,
         "iteration_count": 0,
         "max_iterations": input_state.get("max_iterations"),
-        
+
+        "explain_error": "",
+        "need_fix_sql": False,
+
+        "equivalence_reason": "",
+        "need_fix_equivalence": False,
+
         "llm": input_state.get("llm"),
         "mysql_utils": input_state.get("mysql_utils"),
         "fallback_sqlite": input_state.get("fallback_sqlite") or None
