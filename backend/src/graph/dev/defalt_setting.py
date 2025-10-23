@@ -4,6 +4,8 @@ from src.llm import LangchainLLMClient
 from src.utils.mysql_utils import MySQLUtils
 
 def default_setting_node(state: SQLState) -> SQLState:
+    settings = get_settings()
     state["llm"] = LangchainLLMClient.create_from_settings()
     state["mysql_utils"] = MySQLUtils.create_from_settings()
+    state["database"] = settings.mysql_database
     return state
