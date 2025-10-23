@@ -10,4 +10,5 @@
 # FAQ
 
 Q: 如果镜像拉不下来/拉取很慢怎么办？
+
 A: 寻找对应的代理镜像，比如[DaoCloud](https://docs.daocloud.io/community/mirror/index.html)，将代理镜像拉取下来之后手动将其tag为原镜像名
