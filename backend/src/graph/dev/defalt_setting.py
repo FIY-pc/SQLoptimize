@@ -2,11 +2,8 @@ from src.graph.state import SQLState
 from src.config import get_settings
 from src.llm import LangchainLLMClient
 from src.utils.mysql_utils import MySQLUtils
-import sqlite3
 
 def default_setting_node(state: SQLState) -> SQLState:
-    settings = get_settings()
     state["llm"] = LangchainLLMClient.create_from_settings()
     state["mysql_utils"] = MySQLUtils.create_from_settings()
-    state["fallback_sqlite"] = sqlite3.connect(settings.db_path)
     return state

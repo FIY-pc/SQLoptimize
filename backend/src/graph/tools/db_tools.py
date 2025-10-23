@@ -7,12 +7,11 @@ from src.graph.state import SQLState
 
 async def run_explain(state: SQLState ,sql: str, database: Optional[str] = None) -> Tuple[bool, str]:
     """
-    获取查询计划（优先 MySQL，回退 SQLite）。
+    获取查询计划（MySQL）。
     返回 (success, plan_text)
     """
     settings = get_settings()
 
-    # Try MySQL first
     mysql_utils = state.get("mysql_utils")
     
     if mysql_utils:
@@ -46,24 +45,8 @@ async def run_explain(state: SQLState ,sql: str, database: Optional[str] = None)
                 return False, f"MySQL EXPLAIN失败: {plan_result.get('error', '未知错误')}"
         except Exception as e:
             return False, f"MySQL EXPLAIN异常: {e}"
-
-    # Fallback SQLite
-    try:
-        conn = state.get("fallback_sqlite")
-        if not conn:
-            return False, "未配置 db_path，无法使用 SQLite EXPLAIN QUERY PLAN"
-        cur = conn.cursor()
-        first_stmt = sql.split(";")[0].strip()
-        if not first_stmt:
-            return False, "无法解析 SQL 语句（空或无有效语句）"
-        cur.execute(f"EXPLAIN QUERY PLAN {first_stmt}")
-        rows = cur.fetchall()
-        plan_lines = [" | ".join(str(col) for col in row) for row in rows]
-        cur.close()
-        conn.close()
-        return True, "SQLite EXPLAIN QUERY PLAN:\n" + ("\n".join(plan_lines) if plan_lines else "(无计划结果)")
-    except Exception as e:
-        return False, f"SQLite EXPLAIN失败: {e}"
+    
+    return False, "未配置 MySQL 连接"
 
 
 async def run_explain_cost(state: SQLState, sql: str, database: Optional[str] = None) -> Optional[float]:

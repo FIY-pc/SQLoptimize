@@ -1,0 +1,69 @@
+name: sqloptimize
+services:
+  postgres:
+    image: postgres:17.4-alpine
+    container_name: sqlopt-postgres
+    environment:
+      # Replace with your own variables
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    networks:
+      - sqloptimize-network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+      args:
+        PYTHON_IMAGE: python:3.13-slim-bookworm
+    container_name: sqlopt-backend
+    environment:
+      # Replace with your own variables
+      - SERVICE_DB_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+    ports:
+      - "8000:8000"
+    networks:
+      - sqloptimize-network
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        # Build-time public vars for Next.js
+        # IMPORTANT: This value is used in the browser, so it must be a host-reachable URL
+        # Do NOT use the Docker service name here. Use localhost since backend is published on host:8000
+        NEXT_PUBLIC_SQLOPT_SERVICE_URL: http://localhost:8000
+    container_name: sqlopt-frontend
+    environment:
+      # Runtime vars can override build-time values
+      # Must be host URL for client-side fetches
+      NEXT_PUBLIC_SQLOPT_SERVICE_URL: http://localhost:8000
+      # Expose Next.js on 3000 outside
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+    networks:
+      - sqloptimize-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  sqloptimize-network:
+    driver: bridge

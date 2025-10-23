@@ -14,7 +14,6 @@ class Settings:
     api_key: str
     base_url: str
     model: str
-    db_path: Optional[str]
     log_level: str
     # 服务数据库连接配置
     service_db_url: str
@@ -51,7 +50,6 @@ class Settings:
         api_key = os.getenv("OPENAI_API_KEY", "").strip()
         base_url = os.getenv("OPENAI_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1").strip()
         model = os.getenv("MODEL", "qwen-plus").strip()
-        db_path = os.getenv("DB_PATH", "").strip() or "./data/app.db"
         service_db_url = os.getenv("SERVICE_DB_URL", "").strip()
         log_level = os.getenv("LOG_LEVEL", "INFO").strip()
         request_timeout = int(os.getenv("REQUEST_TIMEOUT", "60"))
@@ -84,7 +82,6 @@ class Settings:
             api_key=api_key,
             base_url=base_url,
             model=model,
-            db_path=db_path,
             service_db_url=service_db_url,
             log_level=log_level,
             request_timeout=request_timeout,

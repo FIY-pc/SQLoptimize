@@ -1,5 +1,4 @@
 from typing import TypedDict, Optional, Dict, Any, List
-import sqlite3
 from langgraph.graph.message import MessagesState
 from src.llm import LLMClient
 from src.utils.mysql_utils import MySQLUtils
@@ -10,7 +9,6 @@ class InputState(TypedDict, total=False):
     max_iterations: int
     llm: LLMClient
     mysql_utils: MySQLUtils
-    fallback_sqlite: Optional[sqlite3.Connection]
 
 class OptimizationPlan(TypedDict, total=False):
     plan_id: str
@@ -52,7 +50,6 @@ class SQLState(MessagesState, total=False):
     # 依赖
     llm: LLMClient
     mysql_utils: MySQLUtils
-    fallback_sqlite: Optional[sqlite3.Connection]
 
 def build_initial_state(
     input_state: InputState
@@ -75,6 +72,5 @@ def build_initial_state(
         "max_iterations": input_state.get("max_iterations"),
         
         "llm": input_state.get("llm"),
-        "mysql_utils": input_state.get("mysql_utils"),
-        "fallback_sqlite": input_state.get("fallback_sqlite") or None
+        "mysql_utils": input_state.get("mysql_utils")
     }

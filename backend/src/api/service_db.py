@@ -20,7 +20,7 @@ def configure_service_db(database_url: str) -> None:
         if db_dir and not os.path.exists(db_dir):
             os.makedirs(db_dir, exist_ok=True)
             logger.info(f"Created SQLite directory: {db_dir}")
-    logger.info(f"Database configured with URL: {database_url}")
+    logger.debug(f"Database configured with URL: {database_url}")
 
 
 def migrate_service_db(Base, force: bool = False) -> None:
