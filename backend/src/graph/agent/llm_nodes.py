@@ -8,90 +8,6 @@ from src.schemas.stream_chunk import Chunk
 
 logger = logging.getLogger(__name__)
 
-def _extract_sql_from_text(text: str) -> str:
-    """
-    提取 LLM 输出中的 ```sql ... ``` 或 ``` ... ``` 代码块；若没有代码块，回退为原文。
-    """
-    if not text:
-        return ""
-    m = re.search(r"```sql\s*\n(.*?)```", text, flags=re.IGNORECASE | re.DOTALL)
-    if m:
-        return m.group(1).strip()
-    m = re.search(r"```\s*\n(.*?)```", text, flags=re.DOTALL)
-    if m:
-        return m.group(1).strip()
-    return text.strip()
-
-def _extract_explanation_from_text(text: str) -> str:
-    """
-    提取模型输出中 SQL 代码块之前的说明文本；若无代码块，则返回全文作为说明。
-    """
-    if not text:
-        return ""
-    m = re.search(r"```sql\s*\n(.*?)```", text, flags=re.IGNORECASE | re.DOTALL)
-    if m:
-        before = text[:m.start()].strip()
-        return before.strip()
-    return text.strip()
-
-async def optimize_sql_node(state: SQLState) -> SQLState:
-    """
-    LLM Node: OptimizeSQL
-    输入：state["sql"], state["plan"], state["stats"]
-    输出：state["optimized_sql"]
-    """
-    logger.debug(f"call optimize_sql_node")
-    sql = (state.get("sql") or "").strip()
-    plan = (state.get("plan") or "").strip()
-    stats = state.get("stats") or {}
-    db_schema = (state.get("db_schema") or "").strip()
-
-    messages = [
-        {
-            "role": "system",
-            "content": (
-                "你是一名资深MySQL数据库性能优化专家。请在语义等价的前提下优化并规范化用户提供的 SQL：\n"
-                "- 必须依据提供的查询计划（EXPLAIN）与数据库统计信息（如表行数、索引、列选择性等）进行优化决策；若统计信息缺失或不完整，请进行保守改写。\n"
-                "- 优化目标：以降低 EXPLAIN JSON 中 query_block.cost_info.query_cost 为首要目标，且不改变结果集语义。\n"
-                "- 优化策略：优先考虑索引使用与覆盖、谓词下推、调整连接顺序（基数驱动）、去除冗余子句/子查询、避免函数使索引失效、减少不必要的 DISTINCT/ORDER BY/FILESORT/TEMPORARY。\n"
-                "- 兼容性与规范要求（严格遵循 Apache Calcite/ANSI SQL）：\n"
-                "  1) 禁止使用方言特性：反引号`、LIMIT、非标准函数（如 IF、DATE_FORMAT、STR_TO_DATE 等）、Hint（如 /*+ ... */）、方言注释/语法；\n"
-                "  2) 如需限制行数，请使用标准语法：OFFSET <n> ROWS FETCH FIRST <m> ROWS ONLY；\n"
-                "  3) 标识符与关键字大小写：不得更改输入 SQL 中标识符的大小写；不要引入反引号；如必须引用标识符，仅使用 ANSI 的双引号；\n"
-                "  4) 仅使用 ANSI 标准函数与语法；任何可能不被 Calcite 接受的写法，必须纠正为可解析的标准写法；\n"
-                "  5) 输出必须是 Calcite 可解析的 SQL。\n"
-                "\n"
-                "【输出格式要求】\n"
-                "请先给出结构化的“分析”部分，逐条说明你如何利用 EXPLAIN 与统计信息进行决策，至少包含：\n"
-                "  - 来自 EXPLAIN 的证据（例如：using_filesort/using_temporary、rows/filtered/attached_condition、possible_keys/used_key/idx 覆盖、Join 类型、驱动表选择等）；\n"
-                "  - 来自统计信息的证据（例如：表行数、索引存在性、列选择性/基数、外键/唯一约束等）；\n"
-                "  - 每条改写的预期效果与其如何降低 query_cost（如提升过滤选择性、减少回表、避免临时表、移除排序、减少扫描范围等）。\n"
-                "然后再输出优化后的 SQL 代码块，使用 ```sql ... ```。\n"
-            ),
-        },
-        {
-            "role": "user",
-            "content": (
-                f"原始 SQL：\n```sql\n{sql}\n```\n\n"
-                f"查询计划：\n{plan}\n\n"
-                f"统计信息（JSON）：\n```json\n{stats}\n```\n\n"
-                f"数据库 schema（DDL）：\n```sql\n{db_schema}\n```\n\n"
-                "请给出语义等价且符合 Calcite/ANSI SQL 的优化版本（严格按上述输出格式）。"
-            ),
-        },
-    ]
-    try:
-        llm = state.get("llm")
-        content = await llm.chat_async(messages)
-        explanation = _extract_explanation_from_text(content)
-        optimized_sql = _extract_sql_from_text(content)
-        state["rewrite_explanation"] = explanation
-        state["optimized_sql"] = optimized_sql
-        # state.setdefault("history", []).append("[optimize_sql] 已生成候选改写 SQL与改写说明")
-    except Exception as e:
-        logger.error(f"Error in optimize_sql_node: {e}")
-    return state
-
 async def llm_equivalence_check(state: SQLState, sql1: str, sql2: str, db_schema: Optional[str] = None) -> Dict[str, Any]:
     logger.debug(f"call llm_equivalence_check")
     messages = [
@@ -101,7 +17,7 @@ async def llm_equivalence_check(state: SQLState, sql1: str, sql2: str, db_schema
                 "你是 SQL 语义等价性验证器。请基于给定的数据库 schema，判断两个 SQL 查询是否语义等价（返回的结果集在所有数据状态下相同）。\n"
                 "- 必须从语义层面分析：连接、过滤、分组、聚合、去重、排序、NULL 处理、表达式等；不要仅凭格式或重命名。\n"
                 "- 若存在不确定或依赖具体数据分布的情况，请谨慎处理，尽量避免误判为等价。\n"
-                "- 仅返回 JSON：{\"equivalent\": true/false}，不要包含其他文本。"
+                '- 仅返回 JSON：{"equivalent": true/false, "reason": "不等价的具体原因或分析"}，不要包含其他文本。'
             ),
         },
         {
@@ -124,12 +40,14 @@ async def llm_equivalence_check(state: SQLState, sql1: str, sql2: str, db_schema
         return {
             "success": True,
             "equivalent": bool(result.get("equivalent", False)),
+            "reason": str(result.get("reason") or ""),
         }
     except Exception as e:
         logger.error(f"Error in llm_equivalence_check: {e}")
         return {
             "success": False,
             "equivalent": False,
+            "reason": "",
             "error": str(e),
         }
 
@@ -295,7 +213,8 @@ async def generate_optimization_plans(state: SQLState) -> SQLState:
                 "optimized_sql": plan_data.get("optimized_sql", ""),
                 "reasoning": plan_data.get("reasoning", ""),
                 "equivalence": False,
-                "cost": None
+                "cost": None,
+                "eq_fix_attempts": 0
             }
             plans.append(plan)
         
@@ -320,4 +239,127 @@ async def generate_optimization_plans(state: SQLState) -> SQLState:
         logger.error(f"Error in generate_optimization_plans: {e}")
 
     
+    return state
+
+
+def _extract_sql_from_text(text: str) -> str:
+    m = re.search(r"```sql\s*(.*?)\s*```", text, re.IGNORECASE | re.DOTALL)
+    if m:
+        return m.group(1).strip().rstrip(";")
+    m2 = re.search(r"((?:SELECT|WITH)\s.*?)(?:```|$)", text, re.IGNORECASE | re.DOTALL)
+    return (m2.group(1).strip().rstrip(";") if m2 else "")
+
+
+async def fix_sql_with_explain_error(state: SQLState) -> SQLState:
+    logger.debug("call fix_sql_with_explain_error")
+    current_index = int(state.get("current_plan_index", 0))
+    plans = state.get("optimization_plans", [])
+    error_msg = (state.get("explain_error") or "").strip()
+    db_schema = (state.get("db_schema") or "").strip()
+
+    optimized_sql = (state.get("optimized_sql") or "").strip()
+    if 0 <= current_index < len(plans):
+        optimized_sql = (plans[current_index].get("optimized_sql") or optimized_sql or "").strip()
+
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "你是一名资深MySQL数据库性能优化专家。根据数据库返回的 EXPLAIN 错误原因，对给定 SQL 进行修复，"
+                "保证能在目标数据库执行，同时保持与原查询语义等价。输出仅包含修复后的 SQL 代码块：```sql ... ```。"
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"当前优化后的 SQL：\n```sql\n{optimized_sql}\n```\n\n"
+                f"数据库返回的 EXPLAIN 错误信息：\n{error_msg}\n\n"
+                "请修复上述 SQL 使其可在数据库执行，且尽量保持对等语义。仅返回 ```sql ... ``` 代码块。"
+            ),
+        },
+    ]
+
+    try:
+        llm = state.get("llm")
+        content = await llm.chat_async(messages)
+        fixed_sql = _extract_sql_from_text(content)
+
+        if fixed_sql:
+            state["optimized_sql"] = fixed_sql
+            if 0 <= current_index < len(plans):
+                plans[current_index]["optimized_sql"] = fixed_sql
+                state["optimization_plans"] = plans
+            # 只有成功修复后才清理错误并关闭修复标记
+            state["need_fix_sql"] = False
+            state["explain_error"] = ""
+        else:
+            # 未能提取到修复 SQL，保留修复标记，便于再次尝试
+            state["need_fix_sql"] = True
+    except Exception as e:
+        logger.error(f"fix_sql_with_explain_error failed: {e}")
+        # 发生异常时继续保持需要修复状态
+        state["need_fix_sql"] = True
+    return state
+
+
+async def fix_sql_with_equivalence_reason(state: SQLState) -> SQLState:
+    logger.debug("call fix_sql_with_equivalence_reason")
+    current_index = int(state.get("current_plan_index", 0))
+    plans = state.get("optimization_plans", [])
+    orig_sql = (state.get("sql") or "").strip()
+    db_schema = (state.get("db_schema") or "").strip()
+
+    # 取当前方案和最近一次原因
+    plan_sql = ""
+    plan_reason = (state.get("equivalence_reason") or "").strip()
+    if 0 <= current_index < len(plans):
+        plan_sql = (plans[current_index].get("optimized_sql") or "").strip()
+        if not plan_reason:
+            plan_reason = (plans[current_index].get("equivalence_reason") or "").strip()
+
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "你是一名资深MySQL/ANSI SQL专家。基于提供的“等价性不通过原因”，修复给定的优化后SQL，使其与原始SQL在语义上等价。\n"
+                "要求：\n"
+                "- 优先使用 MySQL 8.0 语法，避免方言不兼容；\n"
+                "- 修复后尽量保持优化思路（如索引使用、连接顺序调整等）；\n"
+                "- 仅返回一个 ```sql ... ``` 代码块，不要包含其他文本。"
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"原始 SQL：\n```sql\n{orig_sql}\n```\n\n"
+                f"当前优化后的 SQL（待修复）：\n```sql\n{plan_sql}\n```\n\n"
+                f"不等价原因：\n{plan_reason}\n\n"
+                "请输出修复后的 SQL，仅以 ```sql ... ``` 代码块返回。"
+            ),
+        },
+    ]
+
+    try:
+        llm = state.get("llm")
+        content = await llm.chat_async(messages)
+        fixed_sql = _extract_sql_from_text(content)
+
+        # 累加当前方案的修复尝试次数
+        if 0 <= current_index < len(plans):
+            plans[current_index]["eq_fix_attempts"] = int(plans[current_index].get("eq_fix_attempts", 0)) + 1
+
+        if fixed_sql:
+            state["optimized_sql"] = fixed_sql
+            if 0 <= current_index < len(plans):
+                plans[current_index]["optimized_sql"] = fixed_sql
+                plans[current_index]["equivalence_reason"] = ""
+                state["optimization_plans"] = plans
+            state["need_fix_equivalence"] = False
+        else:
+            state["need_fix_equivalence"] = True  # 没取到SQL，再尝试一次
+        # 累加迭代计数，用于回路收敛
+        state["iteration_count"] = int(state.get("iteration_count", 0)) + 1
+    except Exception as e:
+        logger.error(f"fix_sql_with_equivalence_reason failed: {e}")
+        state["need_fix_equivalence"] = True
     return state
