@@ -23,7 +23,7 @@ def setup_logging():
 
 def create_formatter(worker_id: str):
     """创建日志格式化器"""
-    fmt = f'%(asctime)s.%(msecs)03d | %(levelname)-5s | [{worker_id}] %(name)s: %(message)s'
+    fmt = f'%(asctime)s.%(msecs)03d | %(levelname)-5s | [{worker_id}] %(name)s %(lineno)d: %(message)s'
     
     try:
         import colorlog
