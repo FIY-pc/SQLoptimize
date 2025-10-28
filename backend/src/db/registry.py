@@ -166,7 +166,7 @@ class DatabaseRegistry:
         elif db_type == 'postgresql' and not database_url.startswith('postgresql+psycopg2'):
             database_url = database_url.replace('postgresql://', 'postgresql+psycopg2://')
         
-        self.logger.info(f"Creating {db_type} engine: {database_url}")
+        self.logger.debug(f"Creating {db_type} engine: {database_url}")
 
         self._engine = create_engine(database_url, **engine_config)
         Base.metadata.create_all(bind=self._engine)
@@ -199,7 +199,7 @@ class DatabaseRegistry:
             elif database_url.startswith('mysql://'):
                 database_url = database_url.replace('mysql://', 'mysql+aiomysql://')
         
-        self.logger.info(f"Creating async {db_type} engine: {database_url}")
+        self.logger.debug(f"Creating async {db_type} engine: {database_url}")
         
         self._async_engine = create_async_engine(database_url, **engine_config)
         

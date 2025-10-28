@@ -8,7 +8,6 @@ from src.utils.mysql_utils import MySQLUtils
 from src.config import get_settings
 from src.schemas.pipeline_message import create_error_message, create_end_message
 import logging
-import sqlite3
 from src.api.repository import DbSchemaRepository, ModelConnectionRepository, DatabaseConnectionRepository
 logger = logging.getLogger(__name__)
 
@@ -20,13 +19,11 @@ async def execute_pipeline_cli(sql: str, db_schema: Optional[str] = None) -> Sta
     
     llm = get_llm()
     mysql_utils = MySQLUtils.create_from_settings()
-    fallback_sqlite = sqlite3.connect(settings.db_path)
     input_state = InputState(
         sql=sql, 
         db_schema=db_schema,
         llm=llm,
-        mysql_utils=mysql_utils,
-        fallback_sqlite=fallback_sqlite
+        mysql_utils=mysql_utils
     )
 
     app = build_sqlopt_graph()
@@ -63,15 +60,12 @@ async def build_input_state(
         database_url=active_db_conn.database_uri
     )
 
-    settings = get_settings()
-    fallback_sqlite = sqlite3.connect(settings.db_path)
     input_state = InputState(
         sql=sql, 
         db_schema=active_db_schema.schema_content,
         database=active_db_conn.database(),
         llm=llm,
-        mysql_utils=mysql_utils,
-        fallback_sqlite=fallback_sqlite
+        mysql_utils=mysql_utils
     )
     return input_state
 
@@ -110,7 +104,7 @@ async def execute_pipeline_stream(
                 continue
             yield message_chunk, metadata
     except Exception as e:
-        logger.error(f"Error in execute_pipeline_stream: {e}, chunk: {chunk}")
+        logger.error(f"Error in execute_pipeline_stream: {e}")
         # 发送错误消息
         error_message = create_error_message(str(e), get_unix_timestamp())
         yield error_message, {"error": True}

@@ -55,15 +55,13 @@ docker compose up -d
 
 在requirements.txt手动添加依赖条目
 
-> 除非你非常能保证你的虚拟环境不存在任何与本项目运行无关的包， 否则请不要使用 `pip freeze > requirements.txt` 这种方式更新依赖
-
 ## API 文档
 
 启动后端服务后，访问 `http://localhost:8000/docs` 查看 API 文档。
 
 访问 `http://localhost:8000/openapi.json` 可获取 OpenAPI 规范。
 
-或者可以看这个在线版：链接: https://hust-sql-optimimize.apifox.cn  访问密码: sqlopt123
+在线版链接: https://hust-sql-optimimize.apifox.cn  访问密码: sqlopt123
 
 ## 使用langgraph studio进行agent开发
 
@@ -79,9 +77,3 @@ langgraph dev
 ```
 
 若有其他问题请查阅 [langgraph文档](https://langchain-ai.github.io/langgraph/tutorials/langgraph-platform/local-server/)
-
-# FAQ
-
-Q: 如果运行时碰到类似`unable to open database file`的错误怎么办？
-
-A: 请检查.env中设置的DB_PATH对应目录是否存在（默认为./data/app.db）  

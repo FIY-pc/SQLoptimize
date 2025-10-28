@@ -1,5 +1,4 @@
 from typing import TypedDict, Optional, Dict, Any, List
-import sqlite3
 from langgraph.graph.message import MessagesState
 from src.llm import LLMClient
 from src.utils.mysql_utils import MySQLUtils
@@ -8,6 +7,7 @@ class InputState(TypedDict, total=False):
     db_schema: Optional[str]
     database: Optional[str]
     max_iterations: int
+
     # llm: LLMClient
     # mysql_utils: MySQLUtils
     # fallback_sqlite: Optional[sqlite3.Connection]
@@ -100,6 +100,5 @@ def build_initial_state(
         "need_fix_equivalence": False,
 
         "llm": input_state.get("llm"),
-        "mysql_utils": input_state.get("mysql_utils"),
-        "fallback_sqlite": input_state.get("fallback_sqlite") or None
+        "mysql_utils": input_state.get("mysql_utils")
     }

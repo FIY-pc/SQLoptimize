@@ -1364,6 +1364,55 @@
         }
       }
     },
+    "/api/sqls/run": {
+      "post": {
+        "tags": [
+          "sqls"
+        ],
+        "summary": "运行SQL",
+        "operationId": "run_sql_api_sqls_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/ping": {
       "get": {
         "summary": "健康检查",
@@ -2375,6 +2424,53 @@
           "password"
         ],
         "title": "RegisterRequest"
+      },
+      "RunRequest": {
+        "properties": {
+          "sql": {
+            "type": "string",
+            "title": "Sql",
+            "description": "SQL语句"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sql"
+        ],
+        "title": "RunRequest"
+      },
+      "RunResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "是否成功",
+            "default": true
+          },
+          "result": {
+            "items": {
+
+            },
+            "type": "array",
+            "title": "Result",
+            "description": "执行结果",
+            "default": []
+          },
+          "timestamp": {
+            "type": "integer",
+            "title": "Timestamp",
+            "description": "时间戳",
+            "default": 0
+          },
+          "error": {
+            "type": "string",
+            "title": "Error",
+            "description": "错误信息",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "RunResponse"
       },
       "SetActiveDatabaseConnectionRequest": {
         "properties": {

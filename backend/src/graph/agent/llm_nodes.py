@@ -7,6 +7,7 @@ from langchain_core.messages import AIMessageChunk
 from src.schemas.stream_chunk import Chunk
 
 logger = logging.getLogger(__name__)
+
 async def llm_equivalence_check(state: SQLState, sql1: str, sql2: str, db_schema: Optional[str] = None) -> Dict[str, Any]:
     logger.debug(f"call llm_equivalence_check")
     messages = [
@@ -42,6 +43,7 @@ async def llm_equivalence_check(state: SQLState, sql1: str, sql2: str, db_schema
             "reason": str(result.get("reason") or ""),
         }
     except Exception as e:
+        logger.error(f"Error in llm_equivalence_check: {e}")
         return {
             "success": False,
             "equivalent": False,
@@ -117,6 +119,7 @@ async def final_report_node(state: SQLState) -> SQLState:
         state["final_report"] = report
         # state.setdefault("history", []).append("[report] 已生成最终优化报告")
     except Exception as e:
+        logger.error(f"Error in final_report_node: {e}")
         state["final_report"] = f"生成报告失败: {str(e)}"
         # state.setdefault("history", []).append(f"[report] 生成报告失败: {str(e)}")
     
@@ -233,8 +236,8 @@ async def generate_optimization_plans(state: SQLState) -> SQLState:
         # state.setdefault("history", []).append(f"[generate_plans] 已生成 {len(plans)} 个优化方案")
         
     except Exception as e:
-        # state.setdefault("history", []).append(f"[generate_plans] 生成优化方案失败: {str(e)}")
-        pass
+        logger.error(f"Error in generate_optimization_plans: {e}")
+
     
     return state
 
