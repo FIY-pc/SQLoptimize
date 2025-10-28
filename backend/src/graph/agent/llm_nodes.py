@@ -5,6 +5,7 @@ from src.graph.state import SQLState
 from langgraph.config import get_stream_writer
 from langchain_core.messages import AIMessageChunk
 from src.schemas.stream_chunk import Chunk
+from src.graph.tools.format import write_newline_to_stream
 
 logger = logging.getLogger(__name__)
 
@@ -225,13 +226,7 @@ async def generate_optimization_plans(state: SQLState) -> SQLState:
             state["optimized_sql"] = plans[0]["optimized_sql"]
 
         # 末尾换行
-        try:
-            writer = get_stream_writer()
-            chunk = (AIMessageChunk(content="\n"), {"langgraph_node": "generate_plans"})
-            writer(chunk)
-        except Exception as e:
-            logger.error(f"Error in writing custom chunk: {e}")
-            pass
+        await write_newline_to_stream()
         
         # state.setdefault("history", []).append(f"[generate_plans] 已生成 {len(plans)} 个优化方案")
         
