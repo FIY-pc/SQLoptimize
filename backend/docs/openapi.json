@@ -2431,6 +2431,27 @@
             "type": "string",
             "title": "Sql",
             "description": "SQL语句"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "title": "Page",
+            "description": "页码，从1开始",
+            "default": 1
+          },
+          "page_size": {
+            "type": "integer",
+            "maximum": 1000,
+            "minimum": 1,
+            "title": "Page Size",
+            "description": "每页记录数",
+            "default": 100
+          },
+          "include_total": {
+            "type": "boolean",
+            "title": "Include Total",
+            "description": "是否计算总记录数（大数据集可能较慢，默认false以提高性能）",
+            "default": false
           }
         },
         "type": "object",
@@ -2467,6 +2488,30 @@
             "title": "Error",
             "description": "错误信息",
             "default": ""
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page",
+            "description": "当前页码",
+            "default": 1
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size",
+            "description": "每页记录数",
+            "default": 100
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "总记录数，-1表示未知（未计算总数以提高性能）",
+            "default": 0
+          },
+          "total_pages": {
+            "type": "integer",
+            "title": "Total Pages",
+            "description": "总页数，-1表示未知",
+            "default": 0
           }
         },
         "type": "object",
