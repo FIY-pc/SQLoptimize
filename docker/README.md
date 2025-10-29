@@ -7,6 +7,12 @@
 5. 运行`docker compose up -d`
 
 
+如果在使用docker进行开发，可以加上参数`--build`要求每次运行重新构建，即
+```bash
+docker compose up --build
+```
+
+
 # FAQ
 
 Q: 如果镜像拉不下来/拉取很慢怎么办？

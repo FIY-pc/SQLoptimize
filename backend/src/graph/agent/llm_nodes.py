@@ -294,6 +294,8 @@ async def fix_sql_with_explain_error(state: SQLState) -> SQLState:
         logger.error(f"fix_sql_with_explain_error failed: {e}")
         # 发生异常时继续保持需要修复状态
         state["need_fix_sql"] = True
+
+    await write_newline_to_stream()
     return state
 
 
@@ -357,4 +359,6 @@ async def fix_sql_with_equivalence_reason(state: SQLState) -> SQLState:
     except Exception as e:
         logger.error(f"fix_sql_with_equivalence_reason failed: {e}")
         state["need_fix_equivalence"] = True
+
+    await write_newline_to_stream()
     return state

@@ -55,7 +55,7 @@ class DatabaseRegistry:
         if scheme.startswith('sqlite'):
             self.database_type = 'sqlite'
             return 'sqlite'
-        elif scheme.startswith('postgresql'):
+        elif scheme.startswith('postgres'):
             self.database_type = 'postgresql'
             return 'postgresql'
         elif scheme.startswith('mysql'):
@@ -164,7 +164,7 @@ class DatabaseRegistry:
         if db_type == 'mysql' and not database_url.startswith('mysql+pymysql'):
             database_url = database_url.replace('mysql://', 'mysql+pymysql://')
         elif db_type == 'postgresql' and not database_url.startswith('postgresql+psycopg2'):
-            database_url = database_url.replace('postgresql://', 'postgresql+psycopg2://')
+            database_url = database_url.replace('postgres://', 'postgresql+psycopg2://')
         
         self.logger.debug(f"Creating {db_type} engine: {database_url}")
 
@@ -192,7 +192,7 @@ class DatabaseRegistry:
         if db_type == 'sqlite' and not database_url.startswith('sqlite+aiosqlite'):
             database_url = database_url.replace('sqlite://', 'sqlite+aiosqlite://')
         elif db_type == 'postgresql' and not database_url.startswith('postgresql+asyncpg'):
-            database_url = database_url.replace('postgresql://', 'postgresql+asyncpg://')
+            database_url = database_url.replace('postgres://', 'postgresql+asyncpg://')
         elif db_type == 'mysql':
             if 'mysql+pymysql' in database_url:
                 database_url = database_url.replace('mysql+pymysql', 'mysql+aiomysql')
