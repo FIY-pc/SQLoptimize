@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from src.models.base import Base
@@ -18,6 +18,8 @@ class ModelConnection(Base):
 
     model_description = Column(String(500), default="") # 模型描述
     model_avatar_url = Column(String(500), default="")  # 模型头像 URL
+
+    enable_thinking = Column(Boolean, default=False) # 是否启用思考
     
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

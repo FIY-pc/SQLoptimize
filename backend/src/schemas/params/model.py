@@ -9,6 +9,7 @@ class ModelConnectionCreate(BaseModel):
     api_key: str = Field(..., description="模型API密钥")
     model_description: str = Field(default="", description="模型描述")
     model_avatar_url: str = Field(default="", description="模型头像URL")
+    enable_thinking: bool = Field(default=False, description="是否启用思考")
 
 class ModelConnectionUpdate(BaseModel):
     """更新模型连接请求"""
@@ -18,6 +19,7 @@ class ModelConnectionUpdate(BaseModel):
     api_key: Optional[str] = Field(default=None, description="模型API密钥")
     model_description: Optional[str] = Field(default=None, description="模型描述")
     model_avatar_url: Optional[str] = Field(default=None, description="模型头像URL")
+    enable_thinking: Optional[bool] = Field(default=None, description="是否启用思考")
 
 class ModelConnectionResponse(BaseModel):
     """模型连接响应"""
@@ -28,6 +30,7 @@ class ModelConnectionResponse(BaseModel):
     api_key: str = Field(..., description="混淆后的模型API密钥")
     model_description: str = Field(..., description="模型描述")
     model_avatar_url: str = Field(..., description="模型头像URL")
+    enable_thinking: bool = Field(..., description="是否启用思考")
     created_at: str = Field(..., description="创建时间")
     updated_at: str = Field(..., description="更新时间")
 
@@ -52,6 +55,7 @@ class ActiveModelConnectionResponse(BaseModel):
     api_key: str = Field(..., description="混淆后的模型API密钥")
     model_description: str = Field(..., description="模型描述")
     model_avatar_url: str = Field(..., description="模型头像URL")
+    enable_thinking: bool = Field(..., description="是否启用思考")
     created_at: str = Field(..., description="创建时间")
     updated_at: str = Field(..., description="更新时间")
 

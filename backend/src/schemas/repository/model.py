@@ -7,4 +7,5 @@ class CreateModelConnectionReq(BaseModel):
     api_key: str = Field(..., description="模型API密钥")
     model_description: str = Field(default="", description="模型描述")
     model_avatar_url: str = Field(default="", description="模型头像URL")
+    enable_thinking: bool = Field(default=False, description="是否启用思考")
     user_id: int = Field(..., description="用户ID")

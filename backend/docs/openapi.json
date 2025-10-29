@@ -1570,6 +1570,11 @@
             "title": "Model Avatar Url",
             "description": "模型头像URL"
           },
+          "enable_thinking": {
+            "type": "boolean",
+            "title": "Enable Thinking",
+            "description": "是否启用思考"
+          },
           "created_at": {
             "type": "string",
             "title": "Created At",
@@ -1590,6 +1595,7 @@
           "api_key",
           "model_description",
           "model_avatar_url",
+          "enable_thinking",
           "created_at",
           "updated_at"
         ],
@@ -2116,6 +2122,12 @@
             "title": "Model Avatar Url",
             "description": "模型头像URL",
             "default": ""
+          },
+          "enable_thinking": {
+            "type": "boolean",
+            "title": "Enable Thinking",
+            "description": "是否启用思考",
+            "default": false
           }
         },
         "type": "object",
@@ -2213,6 +2225,11 @@
             "title": "Model Avatar Url",
             "description": "模型头像URL"
           },
+          "enable_thinking": {
+            "type": "boolean",
+            "title": "Enable Thinking",
+            "description": "是否启用思考"
+          },
           "created_at": {
             "type": "string",
             "title": "Created At",
@@ -2233,6 +2250,7 @@
           "api_key",
           "model_description",
           "model_avatar_url",
+          "enable_thinking",
           "created_at",
           "updated_at"
         ],
@@ -2312,6 +2330,18 @@
             ],
             "title": "Model Avatar Url",
             "description": "模型头像URL"
+          },
+          "enable_thinking": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enable Thinking",
+            "description": "是否启用思考"
           }
         },
         "type": "object",

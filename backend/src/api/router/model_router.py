@@ -47,6 +47,7 @@ async def get_active_model_connection(
             api_key=mask_api_key(active_connection.api_key),
             model_description=active_connection.model_description,
             model_avatar_url=active_connection.model_avatar_url,
+            enable_thinking=active_connection.enable_thinking,
             created_at=active_connection.created_at.isoformat() if active_connection.created_at else "",
             updated_at=active_connection.updated_at.isoformat() if active_connection.updated_at else ""
         )
@@ -119,6 +120,7 @@ async def get_user_models(
                 api_key=mask_api_key(conn.api_key),
                 model_description=conn.model_description,
                 model_avatar_url=conn.model_avatar_url,
+                enable_thinking=conn.enable_thinking,
                 created_at=conn.created_at.isoformat() if conn.created_at else "",
                 updated_at=conn.updated_at.isoformat() if conn.updated_at else ""
             ))
@@ -175,6 +177,7 @@ async def create_model_connection(
             api_key=request.api_key,
             model_description=request.model_description,
             model_avatar_url=request.model_avatar_url,
+            enable_thinking=request.enable_thinking,
             user_id=current_user["id"]
         )
         
@@ -189,6 +192,7 @@ async def create_model_connection(
             api_key=mask_api_key(connection.api_key),
             model_description=connection.model_description,
             model_avatar_url=connection.model_avatar_url,
+            enable_thinking=connection.enable_thinking,
             created_at=connection.created_at.isoformat() if connection.created_at else "",
             updated_at=connection.updated_at.isoformat() if connection.updated_at else ""
         )
@@ -237,6 +241,7 @@ async def get_model_connection(
             api_key=mask_api_key(connection.api_key),
             model_description=connection.model_description,
             model_avatar_url=connection.model_avatar_url,
+            enable_thinking=connection.enable_thinking,
             created_at=connection.created_at.isoformat() if connection.created_at else "",
             updated_at=connection.updated_at.isoformat() if connection.updated_at else ""
         )
@@ -310,6 +315,7 @@ async def update_model_connection(
             api_key=mask_api_key(updated_connection.api_key),
             model_description=updated_connection.model_description,
             model_avatar_url=updated_connection.model_avatar_url,
+            enable_thinking=updated_connection.enable_thinking,
             created_at=updated_connection.created_at.isoformat() if updated_connection.created_at else "",
             updated_at=updated_connection.updated_at.isoformat() if updated_connection.updated_at else ""
         )
