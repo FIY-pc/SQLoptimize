@@ -9,7 +9,7 @@ class LangchainLLMClient(LLMClient):
         
         self._llm = init_chat_model(
             model=model,
-            api_key=api_key or "EMPTY_KEY",
+            api_key=api_key,
             base_url=base_url,
             model_provider="openai",
         )
@@ -25,10 +25,6 @@ class LangchainLLMClient(LLMClient):
         max_tokens: Optional[int] = None,
         state: Optional[TypedDict] = None,
     ) -> str:
-        settings = get_settings()
-        if not settings.api_key or settings.api_key == "EMPTY_KEY":
-            raise RuntimeError("OPENAI_API_KEY 未设置，请先在环境变量或 .env 中配置。")
-        
         self._llm.bind(
             temperature=temperature,
             max_tokens=max_tokens,
@@ -48,10 +44,6 @@ class LangchainLLMClient(LLMClient):
         state: Optional[TypedDict] = None,
     ) -> str:
         """异步调用 LLM"""
-        settings = get_settings()
-        if not settings.api_key or settings.api_key == "EMPTY_KEY":
-            raise RuntimeError("OPENAI_API_KEY 未设置，请先在环境变量或 .env 中配置。")
-
         self._llm.bind(
             temperature=temperature,
             max_tokens=max_tokens,
