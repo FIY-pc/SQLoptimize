@@ -1,14 +1,16 @@
-from typing import Optional
+from typing import Optional, Tuple, Dict, Any, AsyncGenerator
 from src.graph.graph import build_sqlopt_graph
 from src.graph.state import build_initial_state, InputState
 from src.graph.state import SQLState as State
 from src.utils import get_unix_timestamp
-from src.llm import get_llm, LangchainLLMClient
+from src.llm import get_llm
+from src.llm.langchain_llm import LangchainLLMClient
 from src.utils.mysql_utils import MySQLUtils
 from src.config import get_settings
 from src.schemas.pipeline_message import create_error_message, create_end_message
 import logging
 from src.api.repository import DbSchemaRepository, ModelConnectionRepository, DatabaseConnectionRepository
+from langchain_core.messages import AIMessageChunk
 logger = logging.getLogger(__name__)
 
 async def execute_pipeline_cli(sql: str, db_schema: Optional[str] = None) -> State:
@@ -47,13 +49,14 @@ async def build_input_state(
     active_db_conn = db_conn_repo.get_active_by_user_id(user_id)
 
     logger.debug(f"active_db_schema id: {active_db_schema.id}, schema_content: {active_db_schema.schema_content}")
-    logger.debug(f"active_model id: {active_model.id}, model: {active_model.model}")
+    logger.debug(f"active_model id: {active_model.id}, model: {active_model.model}, enable_thinking: {active_model.enable_thinking}")
     logger.debug(f"active_db_conn id: {active_db_conn.id}, database_uri: {active_db_conn.database_uri}")
     
     llm = LangchainLLMClient(
         model=active_model.model,
         base_url=active_model.base_url,
-        api_key=active_model.api_key
+        api_key=active_model.api_key,
+        enable_thinking=active_model.enable_thinking
     )
     
     mysql_utils = MySQLUtils(
@@ -86,7 +89,7 @@ async def execute_pipeline_api(
 async def execute_pipeline_stream(
     sql: str, 
     user_id: int = 0
-):
+)->AsyncGenerator[Tuple[str, AIMessageChunk, Dict[str, Any]], None]:
     """
     供 API 用的流式执行函数
     """
@@ -98,17 +101,18 @@ async def execute_pipeline_stream(
     stream_mode = ["messages","custom"]
     try:
         async for mode, chunk in app.astream(init_state, stream_mode=stream_mode):
+            mode = mode if mode else "unknown"
             message_chunk = chunk[0]
             metadata = chunk[1]
             if metadata.get("langgraph_node") in filter_nodes:
                 continue
-            yield message_chunk, metadata
+            yield mode, message_chunk, metadata
     except Exception as e:
         logger.error(f"Error in execute_pipeline_stream: {e}")
         # 发送错误消息
         error_message = create_error_message(str(e), get_unix_timestamp())
-        yield error_message, {"error": True}
+        yield "error", error_message, {"error": True}
     finally:
         # 发送结束标记
         end_message = create_end_message("completed", get_unix_timestamp())
-        yield end_message, {"end": True}
+        yield "end", end_message, {"end": True}

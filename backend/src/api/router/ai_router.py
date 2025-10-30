@@ -55,12 +55,13 @@ async def gen_stream(req: OptimizeRequest, current_user: dict):
         # 启动后台任务处理管道输出
         async def process_pipeline():
             try:
-                async for message_chunk, metadata in execute_pipeline_stream(
+                async for mode, message_chunk, metadata in execute_pipeline_stream(
                     sql=req.sql, 
                     user_id=current_user.get("id", 0)
                 ):
                     message_chunk_dict = message_chunk.model_dump()
                     chunk = Chunk(
+                        event=mode,
                         metadata=metadata,
                         **message_chunk_dict
                     )

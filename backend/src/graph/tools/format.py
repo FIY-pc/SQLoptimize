@@ -9,5 +9,5 @@ async def write_newline_to_stream(line_number: int = 1):
         line_number: 换行符的个数
     """
     writer = get_stream_writer()
-    chunk = (AIMessageChunk(content=f"\n"*line_number), {"langgraph_node": "generate_plans"})
+    chunk = (AIMessageChunk(content=f"\n"*line_number), {"langgraph_node": "format"})
     writer(chunk)
