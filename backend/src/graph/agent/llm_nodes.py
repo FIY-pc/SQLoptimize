@@ -95,7 +95,8 @@ async def final_report_node(state: SQLState) -> SQLState:
         {
             "role": "system",
             "content": (
-                "你是一名资深MySQL数据库性能优化专家。请根据提供的信息生成一份详细的SQL优化报告，比较不同优化方案的优缺点。"
+                "你是一名资深TXSQL数据库性能优化专家。请根据提供的信息生成一份详细的SQL优化报告，比较不同优化方案的优缺点。\n"
+                "标题为TXSQL优化报告"
             ),
         },
         {
@@ -151,8 +152,19 @@ async def generate_optimization_plans(state: SQLState) -> SQLState:
                 "  2) 如需限制行数，请使用标准语法：OFFSET <n> ROWS FETCH FIRST <m> ROWS ONLY；\n"
                 "  3) 标识符与关键字大小写：不得更改输入 SQL 中标识符的大小写；不要引入反引号；如必须引用标识符，仅使用 ANSI 的双引号；\n"
                 "  4) 仅使用 ANSI 标准函数与语法；任何可能不被 Calcite 接受的写法，必须纠正为可解析的标准写法；\n"
-                "  5) 每个方案的 optimized_sql 字段必须是 Calcite 可解析的 SQL。\n"
-                "- 输出要求：以JSON格式返回两种优化方案，每种方案包含方案ID、描述、优化后的SQL和“详细的优化理由”。\n"
+                "  5) 每个方案的 optimized_sql 必须是 Calcite 可解析的 SQL。\n"
+                "- 输出要求：以 Markdown 格式返回两种优化方案（不要 JSON，不要使用 ```json```）。\n"
+                "  每个方案必须使用以下固定结构，严格按标签输出，便于解析：\n"
+                "  ## 方案 plan1\n"
+                "  - 描述: <一句话或短段落>\n"
+                "  - 优化后的SQL:\n"
+                "  ```sql\n"
+                "  <SQL>\n"
+                "  ```\n"
+                "  - 优化理由:\n"
+                "  <多段文字，引用 EXPLAIN 与统计信息证据，解释如何降低 query_cost>\n"
+                "  \n"
+                "  然后以同样格式输出 plan2（标题必须为 '## 方案 plan2'）。"
             ),
         },
         {
@@ -162,26 +174,7 @@ async def generate_optimization_plans(state: SQLState) -> SQLState:
                 f"数据库 schema（DDL）：\n```sql\n{db_schema}\n```\n\n"
                 f"查询计划：\n{plan}\n\n"
                 f"统计信息（JSON）：\n```json\n{stats}\n```\n\n"
-                "请提供两种不同的优化方案，每种方案采用不同的优化思路。以JSON格式返回结果：\n"
-                "```json\n"
-                "{\n"
-                '  "plans": [\n'
-                "    {\n"
-                '      "plan_id": "plan1",\n'
-                '      "description": "方案1的简要描述",\n'
-                '      "optimized_sql": "优化后的SQL1（严格符合 Calcite/ANSI SQL）",\n'
-                '      "reasoning": "详细的优化理由（必须引用 EXPLAIN 与统计信息中的具体证据，并解释如何降低 query_cost）"\n'
-                "    },\n"
-                "    {\n"
-                '      "plan_id": "plan2",\n'
-                '      "description": "方案2的简要描述",\n'
-                '      "optimized_sql": "优化后的SQL2（严格符合 Calcite/ANSI SQL）",\n'
-                '      "reasoning": "详细的优化理由（必须引用 EXPLAIN 与统计信息中的具体证据，并解释如何降低 query_cost）"\n'
-                "    }\n"
-                "  ]\n"
-                "}\n"
-                "```\n"
-                "仅返回JSON格式的结果，不要包含其他解释。确保两种方案采用不同的优化思路，并且每个 optimized_sql 都满足 Calcite 语法。"
+                "请按照上述 Markdown 结构返回两种不同优化方案，且两个方案采用不同优化思路。仅返回 Markdown，不要其他说明。"
             ),
         },
     ]
@@ -189,49 +182,58 @@ async def generate_optimization_plans(state: SQLState) -> SQLState:
     try:
         llm = state.get("llm")
         content = await llm.chat_async(messages)
-        
-        # 提取JSON部分
-        import re
-        import json
-        
-        json_match = re.search(r'```json\s*(.*?)\s*```', content, re.DOTALL)
-        if json_match:
-            json_str = json_match.group(1)
-        else:
-            json_str = content
-            
-        result = json.loads(json_str)
-        
-        # 将生成的方案添加到状态中
-        plans = []
-        for plan_data in result.get("plans", []):
-            plan = {
-                "plan_id": plan_data.get("plan_id", ""),
-                "description": plan_data.get("description", ""),
-                "optimized_sql": plan_data.get("optimized_sql", ""),
-                "reasoning": plan_data.get("reasoning", ""),
-                "equivalence": False,
-                "cost": None,
-                "eq_fix_attempts": 0
-            }
-            plans.append(plan)
-        
+
+        # 从 Markdown 结构解析
+        plans = _extract_plans_from_markdown(content)
+
         state["optimization_plans"] = plans
         state["current_plan_index"] = 0
-        
+
         if plans:
-            state["optimized_sql"] = plans[0]["optimized_sql"]
+            state["optimized_sql"] = plans[0].get("optimized_sql", "")
 
         # 末尾换行
         await write_newline_to_stream()
-        
-        # state.setdefault("history", []).append(f"[generate_plans] 已生成 {len(plans)} 个优化方案")
-        
     except Exception as e:
         logger.error(f"Error in generate_optimization_plans: {e}")
 
-    
     return state
+
+
+def _extract_plans_from_markdown(md: str) -> list[dict]:
+    """
+    解析固定结构的 Markdown，提取 [plan_id, description, optimized_sql, reasoning]。
+    """
+    plans = []
+    sections = list(re.finditer(r"^##\s*方案\s*(plan\d+)\s*$", md, re.MULTILINE))
+    for i, m in enumerate(sections):
+        start = m.start()
+        end = sections[i + 1].start() if (i + 1) < len(sections) else len(md)
+        section = md[start:end]
+        plan_id = m.group(1) if m and m.group(1) else f"plan{i+1}"
+
+        # 描述
+        m_desc = re.search(r"-\s*描述\s*:\s*(.*)", section)
+        description = m_desc.group(1).strip() if m_desc else ""
+
+        # SQL（取第一个 ```sql``` 代码块）
+        m_sql = re.search(r"```sql\s*(.*?)\s*```", section, re.IGNORECASE | re.DOTALL)
+        optimized_sql = (m_sql.group(1).strip().rstrip(";") if m_sql else "")
+
+        # 优化理由（从 “- 优化理由:” 标签后到该段落末尾）
+        m_reason_label = re.search(r"-\s*优化理由\s*:\s*", section)
+        reasoning = section[m_reason_label.end():].strip() if m_reason_label else ""
+
+        plans.append({
+            "plan_id": plan_id,
+            "description": description,
+            "optimized_sql": optimized_sql,
+            "reasoning": reasoning,
+            "equivalence": False,
+            "cost": None,
+            "eq_fix_attempts": 0
+        })
+    return plans
 
 
 def _extract_sql_from_text(text: str) -> str:
@@ -266,7 +268,7 @@ async def fix_sql_with_explain_error(state: SQLState) -> SQLState:
             "content": (
                 f"当前优化后的 SQL：\n```sql\n{optimized_sql}\n```\n\n"
                 f"数据库返回的 EXPLAIN 错误信息：\n{error_msg}\n\n"
-                "请修复上述 SQL 使其可在数据库执行，且尽量保持对等语义。仅返回 ```sql ... ``` 代码块。"
+                "请修复上述 SQL 使其能在数据库执行，且尽量保持对等语义。仅返回 ```sql ... ``` 代码块。"
             ),
         },
     ]
