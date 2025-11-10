@@ -10,10 +10,12 @@ import {
 } from "@assistant-ui/react-markdown";
 import remarkGfm from "remark-gfm";
 import { type FC, memo, useState } from "react";
-import { CheckIcon, CopyIcon } from "lucide-react";
+import { CheckIcon, CopyIcon, CirclePlay } from "lucide-react";
 
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { cn } from "@/lib/utils";
+import { runCode, type RunResult } from "./sqlrunner";
+import { RunDialog } from "./run-dialog";
 
 const MarkdownTextImpl = () => {
   return (
@@ -29,21 +31,44 @@ export const MarkdownText = memo(MarkdownTextImpl);
 
 const CodeHeader: FC<CodeHeaderProps> = ({ language, code }) => {
   const { isCopied, copyToClipboard } = useCopyToClipboard();
+  const [open, setOpen] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState<RunResult | null>(null);
+
   const onCopy = () => {
     if (!code || isCopied) return;
     copyToClipboard(code);
   };
 
+  const onRun = async () => {
+    if (!code) return;
+    setOpen(true);
+    setRunning(true);
+    setResult(null);
+    const res = await runCode(language, code);
+    setResult(res);
+    setRunning(false);
+  };
+
   return (
-    <div className="aui-code-header-root mt-4 flex items-center justify-between gap-4 rounded-t-lg bg-muted-foreground/15 px-4 py-2 text-sm font-semibold text-foreground dark:bg-muted-foreground/20">
-      <span className="aui-code-header-language lowercase [&>span]:text-xs">
-        {language}
-      </span>
-      <TooltipIconButton tooltip="Copy" onClick={onCopy}>
-        {!isCopied && <CopyIcon />}
-        {isCopied && <CheckIcon />}
-      </TooltipIconButton>
-    </div>
+    <>
+      <div className="aui-code-header-root mt-4 flex items-center justify-between gap-4 rounded-t-lg bg-muted-foreground/15 px-4 py-2 text-sm font-semibold text-foreground dark:bg-muted-foreground/20">
+        <span className="aui-code-header-language lowercase [&>span]:text-xs">
+          {language}
+        </span>
+        <div className="ml-auto flex items-center gap-2">
+          <TooltipIconButton tooltip="Run Code" onClick={onRun}>
+            <CirclePlay />
+          </TooltipIconButton>
+          <TooltipIconButton tooltip="Copy" onClick={onCopy}>
+            {!isCopied && <CopyIcon />}
+            {isCopied && <CheckIcon />}
+          </TooltipIconButton>
+        </div>
+      </div>
+
+      <RunDialog open={open} onOpenChange={setOpen} language={language} running={running} result={result} />
+    </>
   );
 };
 
@@ -228,3 +253,4 @@ const defaultComponents = memoizeMarkdownComponents({
   },
   CodeHeader,
 });
+
