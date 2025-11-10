@@ -1,23 +1,22 @@
 from typing import List, Dict, Optional, TypedDict
 from src.config import get_settings
-from src.llm.client import LLMClient
 from langchain.chat_models import init_chat_model
 
 
-class LangchainLLMClient(LLMClient):
+class DeepSeekLLMClient:
+
+    api_type = "deepseek"
+
     def __init__(self, model: str, base_url: str, api_key: str, enable_thinking: bool = False) -> None:
         self._llm = init_chat_model(
             model=model,
             model_provider="deepseek",
             api_key=api_key,
             api_base=base_url,
-            extra_body={
-                "enable_thinking": enable_thinking,
-            },
         )
 
     @classmethod
-    def create_from_settings(cls) -> "LangchainLLMClient":
+    def create_from_settings(cls) -> "DeepSeekLLMClient":
         settings = get_settings()
         return cls(model=settings.model, base_url=settings.base_url, api_key=settings.api_key)
 

@@ -14,6 +14,7 @@ class Settings:
     api_key: str
     base_url: str
     model: str
+    
     log_level: str
     # 服务数据库连接配置
     service_db_url: str
@@ -42,6 +43,9 @@ class Settings:
     # 是否使用langsmith开发模式
     langsmith_dev_mode: bool = False
 
+    # 是否启用思考(供测试使用)
+    enable_thinking: bool = False
+
     admin_email: str = ""
     admin_password: str = ""
 
@@ -53,7 +57,8 @@ class Settings:
         service_db_url = os.getenv("SERVICE_DB_URL", "").strip()
         log_level = os.getenv("LOG_LEVEL", "INFO").strip()
         request_timeout = int(os.getenv("REQUEST_TIMEOUT", "60"))
-
+        enable_thinking = os.getenv("ENABLE_THINKING", "false").lower() == "true"
+        
         # SQL等价性校验相关配置
         z3_lib_path = os.getenv("Z3_LIB_PATH", "").strip()
         sqlsolver_jar_path = os.getenv("SQLSOLVER_JAR_PATH", "").strip()
@@ -83,6 +88,7 @@ class Settings:
             base_url=base_url,
             model=model,
             service_db_url=service_db_url,
+            enable_thinking=enable_thinking,
             log_level=log_level,
             request_timeout=request_timeout,
             

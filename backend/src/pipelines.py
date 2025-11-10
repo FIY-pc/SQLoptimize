@@ -3,8 +3,8 @@ from src.graph.graph import build_sqlopt_graph
 from src.graph.state import build_initial_state, InputState
 from src.graph.state import SQLState as State
 from src.utils import get_unix_timestamp
-from src.llm import get_llm
-from src.llm.langchain_llm import LangchainLLMClient
+from src.llm.client import get_llm
+from src.llm.client import LLMClientFactory
 from src.utils.mysql_utils import MySQLUtils
 from src.config import get_settings
 from src.schemas.pipeline_message import create_error_message, create_end_message
@@ -52,7 +52,7 @@ async def build_input_state(
     logger.debug(f"active_model id: {active_model.id}, model: {active_model.model}, enable_thinking: {active_model.enable_thinking}")
     logger.debug(f"active_db_conn id: {active_db_conn.id}, database_uri: {active_db_conn.database_uri}")
     
-    llm = LangchainLLMClient(
+    llm = LLMClientFactory.create_llm_client(
         model=active_model.model,
         base_url=active_model.base_url,
         api_key=active_model.api_key,
@@ -112,7 +112,3 @@ async def execute_pipeline_stream(
         # 发送错误消息
         error_message = create_error_message(str(e), get_unix_timestamp())
         yield "error", error_message, {"error": True}
-    finally:
-        # 发送结束标记
-        end_message = create_end_message("completed", get_unix_timestamp())
-        yield "end", end_message, {"end": True}

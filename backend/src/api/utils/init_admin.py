@@ -63,7 +63,8 @@ def init_admin_user():
                 model=settings.model,
                 base_url=settings.base_url,
                 api_key=settings.api_key,
-                user_id=user_id
+                user_id=user_id,
+                enable_thinking=settings.enable_thinking
             )
             model_connection_repository.create(req)
             logger.info(f"Default model connection created successfully: {settings.model}")

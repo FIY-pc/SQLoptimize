@@ -1,6 +1,6 @@
 from typing import TypedDict, Optional, Dict, Any, List
 from langgraph.graph.message import MessagesState
-from src.llm import LLMClient
+from src.llm.client import LLMClient
 from src.utils.mysql_utils import MySQLUtils
 class InputState(TypedDict, total=False):
     sql: str
