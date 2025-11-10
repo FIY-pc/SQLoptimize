@@ -105,7 +105,7 @@ async def final_report_node(state: SQLState) -> SQLState:
                 f"原始SQL:\n```sql\n{sql}\n```\n\n"
                 f"优化方案比较:\n{plans_info}\n\n"
                 "请提供一份详细的优化报告，包括:\n"
-                "1. 先以表格形式输出原始sql的查询计划（即explain执行后的结果），然后对原始SQL的问题进行分析\n"
+                "1. 先以表格形式输出原始sql的查询计划（即在数据库中执行原始sql的explain结果），然后对原始SQL的问题进行分析\n"
                 "2. 各个优化方案的优化后sql，方案比较和成本对比，注意：必须根据优化方案比较中的成本对比输出改写前后的query_cost值\n\n"
                 "请以Markdown格式返回报告。"
             ),

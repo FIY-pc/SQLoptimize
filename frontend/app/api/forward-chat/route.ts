@@ -31,7 +31,7 @@ function resolveBackendBase(): string {
     try {
         const u = new URL(publicBase);
         if (u.hostname === "localhost" || u.hostname === "127.0.0.1") {
-            u.hostname = "backend"; // 容器内通过服务名访问后端
+            // u.hostname = "backend"; // 容器内通过服务名访问后端
         }
         return u.toString();
     } catch {
