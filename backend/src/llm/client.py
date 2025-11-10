@@ -5,8 +5,8 @@ from src.config import get_settings
 from src.llm.aliyun_llm import AliyunLLMClient
 from src.llm.openai_llm import OpenAILLMClient
 from src.llm.deepseek_llm import DeepSeekLLMClient
-
-
+import logging
+logger = logging.getLogger(__name__)
 LLM_API_TYPE = Literal["aliyun", "openai", "deepseek"]
 
 class LLMClient(abc.ABC):
@@ -54,7 +54,8 @@ class LLMClientFactory:
         for key, value in LLMClientFactory.llm_api_type_map.items():
             if key in base_url:
                 return value
-        return "unknown"
+        logger.warning(f"Unknown API type: {base_url} , treat as openai api type by default")
+        return "openai"
 
     @staticmethod
     def create_llm_client(
@@ -64,8 +65,6 @@ class LLMClientFactory:
         enable_thinking: bool = False
     ) -> LLMClient:
         api_type = LLMClientFactory.extract_api_type(base_url)
-        if api_type == "unknown":
-            raise ValueError(f"Unknown API type: {base_url}")
         return LLMClientFactory.llm_client_map[api_type](model, base_url, api_key, enable_thinking)
 
     @staticmethod
