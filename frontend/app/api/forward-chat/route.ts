@@ -31,7 +31,7 @@ function resolveBackendBase(): string {
     try {
         const u = new URL(publicBase);
         if (u.hostname === "localhost" || u.hostname === "127.0.0.1") {
-            u.hostname = "backend"; // 容器内通过服务名访问后端
+            //u.hostname = "backend"; // 容器内通过服务名访问后端
         }
         return u.toString();
     } catch {
@@ -59,6 +59,7 @@ export async function POST(req: Request) {
     // 2) 解析后端地址与拼接目标 URL
     const serverBase = resolveBackendBase();
     const externalURL = new URL("/api/optimize", serverBase).toString();
+    console.log("Forwarding chat optimize request to external URL:", externalURL);
     const payload = buildOptimizeRequestPayload(body);
     if (!payload.sql) {
         // 直接返回 UI 错误流，避免对后端发起无效调用

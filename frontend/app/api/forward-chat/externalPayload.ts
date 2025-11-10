@@ -90,9 +90,44 @@ export function createAssistantUIErrorStream(error: string, details?: string) {
 
 // 将后端流转换并直接构造 Assistant UI 响应（集成转换和响应头）
 export function toAssistantUIResponse(backendStream: ReadableStream<Uint8Array>) {
-    const msgId = crypto.randomUUID();
+    // 总体消息 start 仅一次
     let buffer = "";
     let started = false;
+
+    // step 边界与 part 状态
+    let currentBackendStep: number | null = null; // 来自 metadata.langgraph_step 的原始标识
+    let currentStepIndex = -1; // 我们对外暴露的连续 step 序号（0 开始）
+    let stepActive = false;
+
+    // 每个 step 内的状态（重置于新 step）
+    let reasoningStarted = false;
+    let lastReasoning = ""; // 累计 reasoning 文本用于切分增量
+    let textStarted = false;
+    let collectedAnyContentThisStep = false; // 用于判断是否需要 finish-step
+
+    function reasoningId() { return `reasoning-${currentStepIndex}`; }
+    function textId() { return `txt-${currentStepIndex}`; }
+
+    // 结束当前 step：按顺序输出 reasoning-end、text-end、finish-step
+    function closeStep(controller: any) {
+        if (!stepActive) return;
+        // 若有 reasoning 流
+        if (reasoningStarted) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'reasoning-end', id: reasoningId() })}\n\n`));
+        }
+        // 若有 text 流
+        if (textStarted) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'text-end', id: textId() })}\n\n`));
+        }
+        // finish-step（仅在 stepActive 时发送）
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'finish-step' })}\n\n`));
+        // 重置 step 状态
+        stepActive = false;
+        reasoningStarted = false;
+        textStarted = false;
+        lastReasoning = "";
+        collectedAnyContentThisStep = false;
+    }
 
     // 提取行（兼容 SSE 的 data: 行和 NDJSON）
     function* extractPayloadLines(text: string): Generator<string> {
@@ -112,7 +147,6 @@ export function toAssistantUIResponse(backendStream: ReadableStream<Uint8Array>)
     const uiTransform = new TransformStream<Uint8Array, Uint8Array>({
         start(controller) {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "start" })}\n\n`));
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "text-start", id: msgId })}\n\n`));
             started = true;
         },
         transform(chunk, controller) {
@@ -129,9 +163,55 @@ export function toAssistantUIResponse(backendStream: ReadableStream<Uint8Array>)
                 if (jsonLine === "[DONE]") continue;
                 try {
                     const obj = JSON.parse(jsonLine);
+                    // 检测 backend step（若无则使用现有 currentBackendStep）
+                    const backendStep: number | null = (obj?.metadata && typeof obj.metadata.langgraph_step === 'number') ? obj.metadata.langgraph_step : null;
+
+                    // 新 step 条件：
+                    // 1) 之前没有 stepActive -> 第一次内容
+                    // 2) 有 backendStep 且 与 currentBackendStep 不同
+                    if (!stepActive || (backendStep !== null && backendStep !== currentBackendStep)) {
+                        // 关闭旧 step（若存在）
+                        closeStep(controller);
+                        // 建立新 step
+                        currentStepIndex += 1;
+                        currentBackendStep = backendStep;
+                        stepActive = true;
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'start-step' })}\n\n`));
+                    }
+
+                    // 处理 reasoning 内容
+                    if (typeof obj?.reasoning_content === 'string') {
+                        const newText = obj.reasoning_content;
+                        const delta = newText.startsWith(lastReasoning) ? newText.slice(lastReasoning.length) : newText;
+                        if (delta) {
+                            if (!reasoningStarted) {
+                                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'reasoning-start', id: reasoningId() })}\n\n`));
+                                reasoningStarted = true;
+                            }
+                            const reasoningEvt = { type: 'reasoning-delta', id: reasoningId(), delta };
+                            controller.enqueue(encoder.encode(`data: ${JSON.stringify(reasoningEvt)}\n\n`));
+                            lastReasoning = newText;
+                            collectedAnyContentThisStep = true;
+                        }
+                    } else if (obj?.type === 'ReasoningChunk' && typeof obj?.content === 'string' && obj.content) {
+                        if (!reasoningStarted) {
+                            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'reasoning-start', id: reasoningId() })}\n\n`));
+                            reasoningStarted = true;
+                        }
+                        const reasoningEvt = { type: 'reasoning-delta', id: reasoningId(), delta: obj.content };
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify(reasoningEvt)}\n\n`));
+                        collectedAnyContentThisStep = true;
+                    }
+
+                    // 处理正文内容
                     if (obj?.type === 'AIMessageChunk' && typeof obj?.content === 'string' && obj.content) {
-                        const deltaEvt = { type: 'text-delta', id: msgId, delta: obj.content };
+                        if (!textStarted) {
+                            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'text-start', id: textId() })}\n\n`));
+                            textStarted = true;
+                        }
+                        const deltaEvt = { type: 'text-delta', id: textId(), delta: obj.content };
                         controller.enqueue(encoder.encode(`data: ${JSON.stringify(deltaEvt)}\n\n`));
+                        collectedAnyContentThisStep = true;
                     }
                 } catch {
                     // 忽略无法解析的行
@@ -145,18 +225,53 @@ export function toAssistantUIResponse(backendStream: ReadableStream<Uint8Array>)
                     if (jsonLine === "[DONE]") continue;
                     try {
                         const obj = JSON.parse(jsonLine);
+                        const backendStep: number | null = (obj?.metadata && typeof obj.metadata.langgraph_step === 'number') ? obj.metadata.langgraph_step : null;
+                        if (!stepActive || (backendStep !== null && backendStep !== currentBackendStep)) {
+                            closeStep(controller);
+                            currentStepIndex += 1;
+                            currentBackendStep = backendStep;
+                            stepActive = true;
+                            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'start-step' })}\n\n`));
+                        }
+                        if (typeof obj?.reasoning_content === 'string') {
+                            const newText = obj.reasoning_content;
+                            const delta = newText.startsWith(lastReasoning) ? newText.slice(lastReasoning.length) : newText;
+                            if (delta) {
+                                if (!reasoningStarted) {
+                                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'reasoning-start', id: reasoningId() })}\n\n`));
+                                    reasoningStarted = true;
+                                }
+                                const reasoningEvt = { type: 'reasoning-delta', id: reasoningId(), delta };
+                                controller.enqueue(encoder.encode(`data: ${JSON.stringify(reasoningEvt)}\n\n`));
+                                lastReasoning = newText;
+                                collectedAnyContentThisStep = true;
+                            }
+                        } else if (obj?.type === 'ReasoningChunk' && typeof obj?.content === 'string' && obj.content) {
+                            if (!reasoningStarted) {
+                                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'reasoning-start', id: reasoningId() })}\n\n`));
+                                reasoningStarted = true;
+                            }
+                            const reasoningEvt = { type: 'reasoning-delta', id: reasoningId(), delta: obj.content };
+                            controller.enqueue(encoder.encode(`data: ${JSON.stringify(reasoningEvt)}\n\n`));
+                            collectedAnyContentThisStep = true;
+                        }
                         if (obj?.type === 'AIMessageChunk' && typeof obj?.content === 'string' && obj.content) {
-                            const deltaEvt = { type: 'text-delta', id: msgId, delta: obj.content };
+                            if (!textStarted) {
+                                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'text-start', id: textId() })}\n\n`));
+                                textStarted = true;
+                            }
+                            const deltaEvt = { type: 'text-delta', id: textId(), delta: obj.content };
                             controller.enqueue(encoder.encode(`data: ${JSON.stringify(deltaEvt)}\n\n`));
+                            collectedAnyContentThisStep = true;
                         }
                     } catch {
                         // 忽略无法解析的行
                     }
                 }
             }
-            if (started) {
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "text-end", id: msgId })}\n\n`));
-            }
+            // 关闭最后一个 step（包括其内部的 reasoning/text 收尾）
+            closeStep(controller);
+            // 总体 finish
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "finish" })}\n\n`));
             controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
         },
