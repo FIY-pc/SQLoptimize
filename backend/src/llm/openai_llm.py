@@ -1,29 +1,23 @@
 from typing import List, Dict, Optional, TypedDict
-from openai import OpenAI, OpenAIError, AsyncOpenAI
+from langchain_openai import ChatOpenAI
 from src.config import get_settings
-from src.llm.client import LLMClient
 
 
-class OpenAILLMClient(LLMClient):
-    def __init__(self, model: str, base_url: str, api_key: str) -> None:
-        self._model = model
-        self._base_url = base_url
-        self._api_key = api_key
+class OpenAILLMClient:
+    api_type = "openai"
 
+    def __init__(self, model: str, base_url: str, api_key: str, enable_thinking: bool = False) -> None:
+        self._client = ChatOpenAI(
+            model=model,
+            model_provider="openai",
+            base_url=base_url,
+            api_key=api_key,
+        )
+
+    @classmethod
+    def create_from_settings(cls) -> "OpenAILLMClient":
         settings = get_settings()
-        
-        self._client = OpenAI(
-            api_key=self._api_key or "EMPTY_KEY",
-            base_url=self._base_url,
-            timeout=settings.request_timeout,
-        )
-        
-        self._client_async = AsyncOpenAI(
-            api_key=self._api_key or "EMPTY_KEY",
-            base_url=self._base_url,
-            timeout=settings.request_timeout,
-        )
-        
+        return cls(model=settings.model, base_url=settings.base_url, api_key=settings.api_key, enable_thinking=settings.enable_thinking)
 
     def chat(
         self,
@@ -32,20 +26,7 @@ class OpenAILLMClient(LLMClient):
         max_tokens: Optional[int] = None,
         state: Optional[TypedDict] = None,
     ) -> str:
-        if not self._api_key or self._api_key == "EMPTY_KEY":
-            raise RuntimeError("OPENAI_API_KEY 未设置，请先在环境变量或 .env 中配置。")
-        
-        try:
-            resp = self._client.chat.completions.create(
-                model=self._model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-            )
-        except OpenAIError as e:
-            raise RuntimeError(f"调用 LLM 出错：{e}") from e
-        content = resp.choices[0].message.content if resp.choices else ""
-        return content or ""
+        return self._client.invoke(messages, temperature=temperature, max_tokens=max_tokens, state=state)
 
     async def chat_async(
         self,
@@ -54,20 +35,4 @@ class OpenAILLMClient(LLMClient):
         max_tokens: Optional[int] = None,
         state: Optional[TypedDict] = None,
     ) -> str:
-        """异步调用 LLM"""
-        if not self._api_key or self._api_key == "EMPTY_KEY":
-            raise RuntimeError("OPENAI_API_KEY 未设置，请先在环境变量或 .env 中配置。")
-
-        try:
-            resp = await self._client_async.chat.completions.create(
-                model=self._model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-            )
-        except OpenAIError as e:
-            raise RuntimeError(f"调用 LLM 出错：{e}") from e
-
-        content = resp.choices[0].message.content if resp.choices else ""
-        return content or ""
-            
+        return await self._client.ainvoke(messages, temperature=temperature, max_tokens=max_tokens, state=state)
