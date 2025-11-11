@@ -30,8 +30,14 @@ export function RunDialog({ open, onOpenChange, language, running, result, code 
 
     const shownResult = localResult ?? result;
     const isRunning = running || localRunning;
-    const rows = (shownResult?.rows ?? []) as Array<Record<string, unknown>>;
-    const columns = useMemo(() => (rows.length > 0 ? Object.keys(rows[0] as Record<string, unknown>) : []), [rows]);
+    const rows = useMemo(
+        () => (shownResult?.rows ? [...shownResult.rows] : []) as Array<Record<string, unknown>>,
+        [shownResult?.rows]
+    );
+    const columns = useMemo(
+        () => (rows.length > 0 ? Object.keys(rows[0] as Record<string, unknown>) : []),
+        [rows]
+    );
 
     // 可编辑的 SQL（初始值为传入 code），对话框关闭时重置
     const [editableSql, setEditableSql] = useState(code || "");
