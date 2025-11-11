@@ -1,19 +1,58 @@
 "use client";
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { type RunResult, stringifySafe } from "./sqlrunner";
+import { Button } from "@/components/ui/button";
+import { type RunResult, stringifySafe, runCode } from "./sql-runner";
+import { useEffect, useMemo, useState } from "react";
+import { CirclePlay } from "lucide-react";
 
+/**
+ * 运行结果弹窗组件 Props
+ */
 export type RunDialogProps = {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     language?: string;
     running: boolean;
     result: RunResult | null;
+    /** 本次执行的原始代码（SQL 文本） */
+    code?: string;
 };
 
-export function RunDialog({ open, onOpenChange, language, running, result }: RunDialogProps) {
-    const rows = result?.rows ?? [];
-    const columns = rows.length > 0 ? Object.keys(rows[0]!) : [];
+/**
+ * 运行结果弹窗：显示语言与执行 SQL（可编辑）
+ * 支持重新运行，并展示结果表格/错误信息。
+ */
+export function RunDialog({ open, onOpenChange, language, running, result, code }: RunDialogProps) {
+    // 本地重新运行状态与结果（不改动父组件状态）
+    const [localRunning, setLocalRunning] = useState(false);
+    const [localResult, setLocalResult] = useState<RunResult | null>(null);
+
+    const shownResult = localResult ?? result;
+    const isRunning = running || localRunning;
+    const rows = (shownResult?.rows ?? []) as Array<Record<string, unknown>>;
+    const columns = useMemo(() => (rows.length > 0 ? Object.keys(rows[0] as Record<string, unknown>) : []), [rows]);
+
+    // 可编辑的 SQL（初始值为传入 code），对话框关闭时重置
+    const [editableSql, setEditableSql] = useState(code || "");
+    useEffect(() => {
+        if (open) {
+            setEditableSql(code || "");
+            // 打开时重置本地状态，避免上次运行的结果干扰
+            setLocalRunning(false);
+            setLocalResult(null);
+        }
+    }, [open, code]);
+
+    const onReRun = async () => {
+        if (!editableSql.trim()) return;
+        setLocalRunning(true);
+        setLocalResult(null);
+        const res = await runCode(language || "sql", editableSql);
+        setLocalResult(res);
+        setLocalRunning(false);
+    };
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-4xl">
@@ -23,57 +62,49 @@ export function RunDialog({ open, onOpenChange, language, running, result }: Run
                         {language ? `语言：${language}` : "SQL"}
                     </DialogDescription>
                 </DialogHeader>
-                <div className="max-h-[70vh] overflow-auto space-y-4">
-                    {running && <div className="text-sm text-muted-foreground">运行中...</div>}
-                    {!running && result && (
+
+                {/* 显示并可编辑本次执行的 SQL + 顶部运行按钮 */}
+                <div className="space-y-2 mb-4">
+                    <div className="flex items-center justify-between">
+                        <div className="text-xs font-semibold text-muted-foreground">执行的 SQL（可编辑）</div>
+                        <Button size="sm" onClick={onReRun} disabled={isRunning || !editableSql.trim()}>
+                            <CirclePlay className="mr-1" /> 运行
+                        </Button>
+                    </div>
+                    <textarea
+                        className="w-full min-h-[100px] resize-none rounded-md border bg-muted/40 p-2 font-mono text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
+                        spellCheck={false}
+                        aria-label="执行的 SQL"
+                        value={editableSql}
+                        onChange={(e) => setEditableSql(e.target.value)}
+                    />
+                </div>
+
+                <div className="max-h-[60vh] space-y-4 overflow-auto" aria-busy={isRunning}>
+                    {isRunning && <div className="text-sm text-muted-foreground">运行中...</div>}
+                    {!isRunning && shownResult && (
                         <div className="space-y-3">
-                            {result.errorText && (
+                            {shownResult.errorText && (
                                 <div>
                                     <div className="mb-1 text-xs font-semibold text-red-500">error</div>
                                     <pre className="rounded-md bg-red-50 p-3 text-sm text-red-600 whitespace-pre-wrap break-words">
-                                        {result.errorText}
+                                        {shownResult.errorText}
                                     </pre>
                                 </div>
                             )}
 
                             {rows.length > 0 && (
-                                <div className="rounded-md border">
-                                    <div className="px-3 py-2 text-xs text-muted-foreground">共 {rows.length} 行</div>
-                                    <div className="overflow-auto">
-                                        <table className="w-full text-sm">
-                                            <thead className="sticky top-0 bg-muted">
-                                                <tr>
-                                                    {columns.map((col) => (
-                                                        <th key={col} className="px-3 py-2 text-left font-semibold border-b">
-                                                            {col}
-                                                        </th>
-                                                    ))}
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {rows.map((r, i) => (
-                                                    <tr key={i} className="border-b last:border-0">
-                                                        {columns.map((col) => (
-                                                            <td key={col} className="px-3 py-2 align-top">
-                                                                {formatCell(r[col])}
-                                                            </td>
-                                                        ))}
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
+                                <ResultTable rows={rows} columns={columns} />
                             )}
 
-                            {!result.errorText && rows.length === 0 && (
+                            {!shownResult.errorText && rows.length === 0 && (
                                 <div className="text-sm text-muted-foreground">无结果</div>
                             )}
 
-                            {process.env.NODE_ENV !== "production" && !!result?.raw && (
+                            {process.env.NODE_ENV !== "production" && !!shownResult?.raw && (
                                 <details className="rounded-md border p-3">
                                     <summary className="cursor-pointer text-xs text-muted-foreground">原始响应(raw)</summary>
-                                    <pre className="mt-2 text-xs whitespace-pre-wrap break-words">{stringifySafe(result.raw)}</pre>
+                                    <pre className="mt-2 text-xs whitespace-pre-wrap break-words">{stringifySafe(shownResult.raw)}</pre>
                                 </details>
                             )}
                         </div>
@@ -88,4 +119,45 @@ function formatCell(v: unknown): string {
     if (v == null) return "";
     if (typeof v === "object") return stringifySafe(v);
     return String(v);
+}
+
+/**
+ * 简单结果表格渲染
+ */
+function ResultTable({
+    columns,
+    rows,
+}: {
+    columns: string[];
+    rows: Array<Record<string, unknown>>;
+}) {
+    return (
+        <div className="rounded-md border">
+            <div className="px-3 py-2 text-xs text-muted-foreground">共 {rows.length} 行</div>
+            <div className="overflow-auto">
+                <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-muted">
+                        <tr>
+                            {columns.map((col) => (
+                                <th key={col} className="border-b px-3 py-2 text-left font-semibold">
+                                    {col}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows.map((r, i) => (
+                            <tr key={i} className="border-b last:border-0">
+                                {columns.map((col) => (
+                                    <td key={col} className="px-3 py-2 align-top">
+                                        {formatCell((r as Record<string, unknown>)[col])}
+                                    </td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
 }

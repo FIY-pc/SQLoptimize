@@ -45,14 +45,12 @@ async function runSql(sql: string): Promise<RunResult> {
 }
 
 // 安全 stringify
-// 保留工具（可能用于调试显示 raw）
-function stringifySafe(v: unknown): string {
+export function stringifySafe(v: unknown): string {
     if (typeof v === "string") return v;
     try { return JSON.stringify(v, null, 2); } catch { return String(v); }
 }
-export { stringifySafe };
 
-// 构造 Headers（复用 serviceUtils 的逻辑，但为了避免循环依赖在此轻量实现）
+// 构造 Headers（复用 serviceUtils 的逻辑，为避免循环依赖在此轻量实现）
 function buildHeaders(json = true): HeadersInit {
     const headers: HeadersInit = {};
     if (json) headers["content-type"] = "application/json";

@@ -14,7 +14,7 @@ import { CheckIcon, CopyIcon, CirclePlay } from "lucide-react";
 
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { cn } from "@/lib/utils";
-import { runCode, type RunResult } from "./sqlrunner";
+import { runCode, type RunResult } from "./sql-runner";
 import { RunDialog } from "./run-dialog";
 
 const MarkdownTextImpl = () => {
@@ -67,7 +67,14 @@ const CodeHeader: FC<CodeHeaderProps> = ({ language, code }) => {
         </div>
       </div>
 
-      <RunDialog open={open} onOpenChange={setOpen} language={language} running={running} result={result} />
+      <RunDialog
+        open={open}
+        onOpenChange={setOpen}
+        language={language}
+        running={running}
+        result={result}
+        code={code}
+      />
     </>
   );
 };
