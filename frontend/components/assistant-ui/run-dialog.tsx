@@ -3,7 +3,7 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { type RunResult, stringifySafe, runCode } from "./sql-runner";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { CirclePlay } from "lucide-react";
 
 /**
@@ -38,6 +38,14 @@ export function RunDialog({ open, onOpenChange, language, running, result, code 
         () => (rows.length > 0 ? Object.keys(rows[0] as Record<string, unknown>) : []),
         [rows]
     );
+    // 从原始响应中提取运行耗时（秒）
+    const costTime = useMemo(() => {
+        const raw: unknown = shownResult?.raw;
+        if (raw && typeof raw === "object" && typeof (raw as { cost_time?: unknown }).cost_time === "number") {
+            return (raw as { cost_time: number }).cost_time;
+        }
+        return undefined;
+    }, [shownResult?.raw]);
 
     // 可编辑的 SQL（初始值为传入 code），对话框关闭时重置
     const [editableSql, setEditableSql] = useState(code || "");
@@ -58,6 +66,28 @@ export function RunDialog({ open, onOpenChange, language, running, result, code 
         setLocalResult(res);
         setLocalRunning(false);
     };
+
+    // 动态计时：在 isRunning 期间实时显示耗时
+    const [elapsed, setElapsed] = useState(0);
+    const startRef = useRef<number | null>(null);
+    useEffect(() => {
+        if (isRunning) {
+            // 启动计时
+            startRef.current = performance.now();
+            setElapsed(0);
+            const id = setInterval(() => {
+                if (startRef.current != null) {
+                    setElapsed((performance.now() - startRef.current) / 1000);
+                }
+            }, 100); // 100ms 更新一次，兼顾流畅与性能
+            return () => {
+                clearInterval(id);
+            };
+        } else {
+            // 停止计时并重置
+            startRef.current = null;
+        }
+    }, [isRunning]);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -87,7 +117,16 @@ export function RunDialog({ open, onOpenChange, language, running, result, code 
                 </div>
 
                 <div className="max-h-[60vh] space-y-4 overflow-auto" aria-busy={isRunning}>
-                    {isRunning && <div className="text-sm text-muted-foreground">运行中...</div>}
+                    <div className="text-sm text-muted-foreground">
+                        {isRunning ? (
+                            <>
+                                运行中...
+                                <span className="ml-2 tabular-nums">{elapsed.toFixed(2)}s</span>
+                            </>
+                        ) : (
+                            <>运行结果</>
+                        )}
+                    </div>
                     {!isRunning && shownResult && (
                         <div className="space-y-3">
                             {shownResult.errorText && (
@@ -100,7 +139,7 @@ export function RunDialog({ open, onOpenChange, language, running, result, code 
                             )}
 
                             {rows.length > 0 && (
-                                <ResultTable rows={rows} columns={columns} />
+                                <ResultTable rows={rows} columns={columns} costTime={costTime} />
                             )}
 
                             {!shownResult.errorText && rows.length === 0 && (
@@ -133,13 +172,20 @@ function formatCell(v: unknown): string {
 function ResultTable({
     columns,
     rows,
+    costTime,
 }: {
     columns: string[];
     rows: Array<Record<string, unknown>>;
+    costTime?: number;
 }) {
     return (
         <div className="rounded-md border">
-            <div className="px-3 py-2 text-xs text-muted-foreground">共 {rows.length} 行</div>
+            <div className="flex items-center justify-between px-3 py-2 text-xs text-muted-foreground">
+                <span>共 {rows.length} 行</span>
+                {typeof costTime === "number" && (
+                    <span className="ml-4 whitespace-nowrap">耗时 {costTime.toFixed(3)}s</span>
+                )}
+            </div>
             <div className="overflow-auto">
                 <table className="w-full text-sm">
                     <thead className="sticky top-0 bg-muted">
