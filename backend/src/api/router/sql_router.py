@@ -53,11 +53,14 @@ async def run_sql(
         # 这样数据库只会执行实际查询并返回指定页的数据，而不是所有数据
         paginated_sql = add_pagination_to_sql(req.sql, page, page_size, database_type)
         
+        
         async with registry.async_session() as session:
+            begin_time = time.time()
             # 执行分页后的SQL查询，数据库只会返回指定页的数据
             result = await session.execute(text(paginated_sql))
             rows = result.fetchall()
-            
+            end_time = time.time()
+
             # 将 SQLAlchemy Row 对象转换为字典列表
             result_data = []
             for row in rows:
@@ -72,7 +75,7 @@ async def run_sql(
                     result_data.append(list(row))
             
             # 根据请求参数决定是否计算总数
-            begin_time = time.time()
+            
             if req.include_total:
                 try:
                     count_sql = get_count_sql(req.sql)
@@ -87,8 +90,8 @@ async def run_sql(
                 # 不计算总数，设置为-1表示未知
                 total = -1
                 total_pages = -1
-            end_time = time.time()
-            cost_time = (end_time - begin_time) * 1000
+            
+            cost_time = end_time - begin_time
             return RunResponse(
                 success=True,
                 result=result_data,
