@@ -47,7 +47,7 @@ export const ModelPicker: FC = () => {
 
   // 事件拦截策略说明：
   // - Radix Select 在 pointerup/mouseup 阶段提交选中，子元素按钮点击容易“误选中”。
-  // - 我们在按钮 pointerdown 阶段标记 actionClickRef，并阻止冒泡；在 mouseup 仅 stopPropagation，允许 onClick 正常触发。
+  // - 在按钮 pointerdown 阶段标记 actionClickRef，并阻止冒泡；在 mouseup 仅 stopPropagation，允许 onClick 正常触发。
   // - 在 SelectItem 的 onSelect 中，根据 actionClickRef 判定并 e.preventDefault()，最终阻止选中。
   // - 标记有效时间（100ms）覆盖 mouseup→click 序列，避免竞态。
   // 用于标记“当前是点击了操作按钮区域”，在 SelectItem 的 onSelect 中阻止选中
@@ -250,7 +250,7 @@ export const ModelPicker: FC = () => {
   return (
     <>
       <Select value={selectedId} onValueChange={handleSelectChange} disabled={loading} onOpenChange={handleSelectOpenChange}>
-        <SelectTrigger className="w-full min-w-[150px] max-w-[480px]" aria-busy={loading}>
+        <SelectTrigger className="w-auto flex-grow-0 flex-shrink-0 min-w-[150px] max-w-[480px]" aria-busy={loading}>
           {/* 只显示选中项的图标和名称，不显示操作按钮 */}
           {(() => {
             const selected = options.find(o => o.value === selectedId);
@@ -259,7 +259,7 @@ export const ModelPicker: FC = () => {
                 <span className="relative h-5 w-5 shrink-0">
                   <Image src={selected.icon} alt={selected.name} fill className="object-contain" />
                 </span>
-                <span className="min-w-0 truncate">{selected.name}</span>
+                <span className="min-w-0 truncate flex-shrink">{selected.name}</span>
               </div>
             ) : <SelectValue placeholder="请选择模型" />;
           })()}
