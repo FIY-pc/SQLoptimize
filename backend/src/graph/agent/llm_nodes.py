@@ -2,7 +2,7 @@ from typing import Optional, Dict, Any
 import re
 import logging
 from src.graph.state import SQLState
-from src.graph.tools.format import write_newline_to_stream
+from src.graph.tools.format import write_newline_to_stream, write_separator_to_stream
 
 logger = logging.getLogger(__name__)
 
@@ -196,6 +196,7 @@ async def generate_optimization_plans(state: SQLState) -> SQLState:
 
         # 末尾换行
         await write_newline_to_stream()
+        await write_separator_to_stream()
     except Exception as e:
         logger.error(f"Error in generate_optimization_plans: {e}")
 
@@ -316,6 +317,7 @@ async def fix_sql_with_explain_error(state: SQLState) -> SQLState:
         state["need_fix_sql"] = True
 
     await write_newline_to_stream()
+    await write_separator_to_stream()
     return state
 
 

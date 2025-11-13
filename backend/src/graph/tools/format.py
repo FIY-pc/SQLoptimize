@@ -11,3 +11,8 @@ async def write_newline_to_stream(line_number: int = 1):
     writer = get_stream_writer()
     chunk = (AIMessageChunk(content=f"\n"*line_number), {"langgraph_node": "format"})
     writer(chunk)
+
+async def write_separator_to_stream(separator: str = "\n---\n"):
+    writer = get_stream_writer()
+    chunk = (AIMessageChunk(content=separator), {"langgraph_node": "format"})
+    writer(chunk)
