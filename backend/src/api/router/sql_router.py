@@ -8,6 +8,7 @@ from src.api.repository import DatabaseConnectionRepository
 from src.db.registry import DatabaseRegistry
 from src.utils.time_utils import get_unix_timestamp
 from sqlalchemy import text 
+import time
 logger = logging.getLogger(__name__)
 
 sql_router = APIRouter(
@@ -44,7 +45,7 @@ async def run_sql(
             else:
                 database_type = 'unknown'
         
-        # 在数据库层面添加分页限制，防止大查询攻击
+        # 在数据库层面添加分页限制，防止大查询攻击(虽然也并非很好的手段，只能相信数据库的optimizer了)
         page = req.page
         page_size = min(req.page_size, 1000)  # 确保不超过最大限制
         
@@ -71,6 +72,7 @@ async def run_sql(
                     result_data.append(list(row))
             
             # 根据请求参数决定是否计算总数
+            begin_time = time.time()
             if req.include_total:
                 try:
                     count_sql = get_count_sql(req.sql)
@@ -85,7 +87,8 @@ async def run_sql(
                 # 不计算总数，设置为-1表示未知
                 total = -1
                 total_pages = -1
-            
+            end_time = time.time()
+            cost_time = (end_time - begin_time) * 1000
             return RunResponse(
                 success=True,
                 result=result_data,
@@ -94,6 +97,7 @@ async def run_sql(
                 page_size=page_size,
                 total=total,
                 total_pages=total_pages,
+                cost_time=cost_time,
             )
     except Exception as e:
         logger.error(f"Error in run_sql: {e}")
@@ -106,4 +110,5 @@ async def run_sql(
             page_size=req.page_size,
             total=0,
             total_pages=0,
+            cost_time=0,
         )
