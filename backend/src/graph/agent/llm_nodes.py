@@ -154,8 +154,9 @@ async def generate_optimization_plans(state: SQLState) -> SQLState:
                 "  4) 仅使用 ANSI 标准函数与语法；任何可能不被 Calcite 接受的写法，必须纠正为可解析的标准写法；\n"
                 "  5) 每个方案的 optimized_sql 必须是 Calcite 可解析的 SQL。\n"
                 "- 输出要求：以 Markdown 格式返回两种优化方案（不要 JSON，不要使用 ```json```）。\n"
-                "  每个方案必须使用以下固定结构，严格按标签输出，便于解析：\n"
-                "  ## 方案 plan1\n"
+                "  先输出一个一级大标题：\"# SQL初始优化方案总览\"，并用1-2句话简述整体优化目标与两种方案的思路差异；\n"
+                "  随后严格按以下固定结构输出每个方案（保持标签不变，便于解析）：\n"
+                "  ## 方案1\n"
                 "  - 描述: <一句话或短段落>\n"
                 "  - 优化后的SQL:\n"
                 "  ```sql\n"
@@ -163,8 +164,8 @@ async def generate_optimization_plans(state: SQLState) -> SQLState:
                 "  ```\n"
                 "  - 优化理由:\n"
                 "  <多段文字，引用 EXPLAIN 与统计信息证据，解释如何降低 query_cost>\n"
-                "  \n"
-                "  然后以同样格式输出 plan2（标题必须为 '## 方案 plan2'）。"
+                "  \n\n"
+                "  然后以同样格式输出 plan2（标题必须为 '## 方案2'）。"
             ),
         },
         {
@@ -174,7 +175,8 @@ async def generate_optimization_plans(state: SQLState) -> SQLState:
                 f"数据库 schema（DDL）：\n```sql\n{db_schema}\n```\n\n"
                 f"查询计划：\n{plan}\n\n"
                 f"统计信息（JSON）：\n```json\n{stats}\n```\n\n"
-                "请按照上述 Markdown 结构返回两种不同优化方案，且两个方案采用不同优化思路。仅返回 Markdown，不要其他说明。"
+                "请先输出 '# SQL初始优化方案总览' 作为大标题，给出一句话的整体说明，"
+                "然后严格按上述 Markdown 结构输出 '## 方案 plan1' 与 '## 方案 plan2'。仅返回 Markdown，不要其他说明。"
             ),
         },
     ]
@@ -205,12 +207,13 @@ def _extract_plans_from_markdown(md: str) -> list[dict]:
     解析固定结构的 Markdown，提取 [plan_id, description, optimized_sql, reasoning]。
     """
     plans = []
-    sections = list(re.finditer(r"^##\s*方案\s*(plan\d+)\s*$", md, re.MULTILINE))
+    sections = list(re.finditer(r"^##\s*方案\s*(?:plan)?\s*(\d+)\s*$", md, re.MULTILINE))
     for i, m in enumerate(sections):
         start = m.start()
         end = sections[i + 1].start() if (i + 1) < len(sections) else len(md)
         section = md[start:end]
-        plan_id = m.group(1) if m and m.group(1) else f"plan{i+1}"
+        plan_num = m.group(1) if m and m.group(1) else str(i + 1)
+        plan_id = f"plan{plan_num}"
 
         # 描述
         m_desc = re.search(r"-\s*描述\s*:\s*(.*)", section)
@@ -254,13 +257,25 @@ async def fix_sql_with_explain_error(state: SQLState) -> SQLState:
     optimized_sql = (state.get("optimized_sql") or "").strip()
     if 0 <= current_index < len(plans):
         optimized_sql = (plans[current_index].get("optimized_sql") or optimized_sql or "").strip()
+    # 根据当前方案提取 plan_id 的显示编号
+    plan_id = ""
+    if 0 <= current_index < len(plans):
+        plan_id = (plans[current_index].get("plan_id") or "").strip()
+    import re
+    m = re.search(r"\d+", plan_id)
+    plan_display = m.group(0) if m else (plan_id or str(current_index + 1))
 
     messages = [
         {
             "role": "system",
             "content": (
-                "你是一名资深MySQL数据库性能优化专家。根据数据库返回的 EXPLAIN 错误原因，对给定 SQL 进行修复，"
-                "保证能在目标数据库执行，同时保持与原查询语义等价。输出仅包含修复后的 SQL 所属方案（如方案一修复后sql：）以及修复后的 SQL 代码块：```sql ... ```。"
+                "你是一名资深MySQL数据库性能优化专家。根据数据库返回的 EXPLAIN 错误信息，对给定 SQL 进行修复，"
+                "保证能在目标数据库执行，同时保持与原查询语义等价。"
+                "请严格按照如下固定格式输出，不要标题、不要额外说明、不要 JSON：\n"
+                f"#### 初始优化方案{plan_display}的SQL存在{{错误类别}}：{{错误摘要}},修复后的SQL为：\n"
+                "```sql\n"
+                "<修复后的SQL>\n"
+                "```\n\n"
             ),
         },
         {
@@ -268,7 +283,13 @@ async def fix_sql_with_explain_error(state: SQLState) -> SQLState:
             "content": (
                 f"当前优化后的 SQL：\n```sql\n{optimized_sql}\n```\n\n"
                 f"数据库返回的 EXPLAIN 错误信息：\n{error_msg}\n\n"
-                "请修复上述 SQL 使其能在数据库执行，且尽量保持对等语义。仅返回 ```sql ... ``` 代码块。"
+                "请依据 EXPLAIN 错误信息提炼“错误类别”（如解析错误/语法错误/语义错误/类型错误/标识符不存在等）与“错误摘要”，严禁编造新原因。\n"
+                "保证修复后的 SQL 与原查询语义等价，且符合 ANSI/Calcite 解析。\n"
+                "请严格按照如下固定格式输出，不要标题、不要额外说明、不要 JSON：\n"
+                f"##### 初始优化方案{plan_display}的SQL存在{{错误类别}}：{{错误摘要}}，修复后的SQL为：\n"
+                "```sql\n"
+                "<修复后的SQL>\n"
+                "```\n\n"
             ),
         },
     ]
