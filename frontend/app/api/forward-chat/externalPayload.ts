@@ -18,6 +18,17 @@ export interface OptimizeRequestPayload {
 }
 
 /**
+ * 后端事件对象类型定义
+ */
+type BackendEvent = {
+    type?: string;
+    content?: unknown;
+    reasoning_content?: unknown;
+    metadata?: { langgraph_step?: unknown;[k: string]: unknown } | undefined;
+    [k: string]: unknown;
+};
+
+/**
  * SSE 统一响应头，与 Assistant UI 协议保持兼容）
  */
 export const SSE_HEADERS: Record<string, string> = {
@@ -151,8 +162,8 @@ export function toAssistantUIResponse(backendStream: ReadableStream<Uint8Array>)
     }
 
     /** 处理单条 JSON 对象并发出对应事件 */
-    function processObj(obj: any, controller: TransformStreamDefaultController<Uint8Array>) {
-        const backendStep: number | null = obj?.metadata && typeof obj.metadata.langgraph_step === "number" ? obj.metadata.langgraph_step : null;
+    function processObj(obj: BackendEvent, controller: TransformStreamDefaultController<Uint8Array>) {
+        const backendStep: number | null = obj?.metadata && typeof obj.metadata.langgraph_step === "number" ? (obj.metadata.langgraph_step as number) : null;
 
         // 是否需要开始新 step
         if (!stepActive || (backendStep !== null && backendStep !== currentBackendStep)) {
@@ -165,7 +176,7 @@ export function toAssistantUIResponse(backendStream: ReadableStream<Uint8Array>)
 
         // reasoning 增量（两种字段兼容）
         if (typeof obj?.reasoning_content === "string") {
-            const newText = obj.reasoning_content;
+            const newText = obj.reasoning_content as string;
             const delta = newText.startsWith(lastReasoning) ? newText.slice(lastReasoning.length) : newText;
             if (delta) {
                 if (!reasoningStarted) {
