@@ -105,7 +105,7 @@ async def final_report_node(state: SQLState) -> SQLState:
                 f"原始SQL:\n```sql\n{sql}\n```\n\n"
                 f"优化方案比较:\n{plans_info}\n\n"
                 "请提供一份详细的优化报告，包括:\n"
-                "1. 先以表格形式输出原始sql的查询计划（即在数据库中执行原始sql的explain结果），然后对原始SQL的问题进行分析\n"
+                "1. 先输出原始sql并以表格形式输出原始sql的查询计划（即在数据库中执行原始sql的explain结果），然后对原始SQL的问题进行分析\n"
                 "2. 各个优化方案的优化后sql，方案比较和成本对比，注意：必须根据优化方案比较中的成本对比输出改写前后的query_cost值\n\n"
                 "请以Markdown格式返回报告。"
             ),
@@ -336,6 +336,14 @@ async def fix_sql_with_equivalence_reason(state: SQLState) -> SQLState:
         if not plan_reason:
             plan_reason = (plans[current_index].get("equivalence_reason") or "").strip()
 
+    # 根据当前方案提取 plan_id 的显示编号
+    plan_id = ""
+    if 0 <= current_index < len(plans):
+        plan_id = (plans[current_index].get("plan_id") or "").strip()
+    import re
+    m = re.search(r"\d+", plan_id)
+    plan_display = m.group(0) if m else (plan_id or str(current_index + 1))
+
     messages = [
         {
             "role": "system",
@@ -344,7 +352,11 @@ async def fix_sql_with_equivalence_reason(state: SQLState) -> SQLState:
                 "要求：\n"
                 "- 优先使用 MySQL 8.0 语法，避免方言不兼容；\n"
                 "- 修复后尽量保持优化思路（如索引使用、连接顺序调整等）；\n"
-                "- 仅返回一个 ```sql ... ``` 代码块，不要包含其他文本。"
+                "请严格按照如下固定格式输出，不要标题、不要额外说明、不要 JSON：\n"
+                f"#### 初始优化方案{plan_display}的SQL不等价原因：{{原因摘要}}，修复后的SQL为：\n"
+                "```sql\n"
+                "<修复后的SQL>\n"
+                "```"
             ),
         },
         {
@@ -352,8 +364,8 @@ async def fix_sql_with_equivalence_reason(state: SQLState) -> SQLState:
             "content": (
                 f"原始 SQL：\n```sql\n{orig_sql}\n```\n\n"
                 f"当前优化后的 SQL（待修复）：\n```sql\n{plan_sql}\n```\n\n"
-                f"不等价原因：\n{plan_reason}\n\n"
-                "请输出修复后的 SQL，仅以 ```sql ... ``` 代码块返回。"
+                f"不等价原因（摘要）：\n{plan_reason}\n\n"
+                "请依据上述“不等价原因（摘要）”修复 SQL，并严格按固定格式输出说明与一个 ```sql ... ``` 代码块。"
             ),
         },
     ]
@@ -383,4 +395,5 @@ async def fix_sql_with_equivalence_reason(state: SQLState) -> SQLState:
         state["need_fix_equivalence"] = True
 
     await write_newline_to_stream()
+    await write_separator_to_stream()
     return state
