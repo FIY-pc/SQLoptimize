@@ -8,6 +8,34 @@
 
 ### 1. 配置环境变量
 
+在前端构建或运行时可提供以下变量（`.env.local` 或 docker 构建参数）：
+
+| 变量 | 说明 |
+| ---- | ---- |
+| `NEXT_PUBLIC_SQLOPT_SERVICE_URL` | 后端服务基础 URL（默认 `http://127.0.0.1:8000`） |
+| `NEXT_PUBLIC_DEFAULT_EMAIL` | 默认账号邮箱（首次访问自动登录/注册） |
+| `NEXT_PUBLIC_DEFAULT_PASSWORD` | 默认账号密码 |
+| `NEXT_PUBLIC_DEFAULT_NAME` | 默认账号昵称（可选，默认 `Default`） |
+
+
+自动登录逻辑：仅配置默认账号时生效，若本地已有登录态（用户手动登录过）则不会覆盖。
+
+示例（Docker Compose `frontend` 服务传参）：
+
+```yaml
+services:
+	frontend:
+		build:
+			context: ./frontend
+			args:
+				NEXT_PUBLIC_SQLOPT_SERVICE_URL: "http://backend:8000"
+				NEXT_PUBLIC_DEFAULT_EMAIL: "demo@example.com"
+				NEXT_PUBLIC_DEFAULT_PASSWORD: "demo123456"
+				NEXT_PUBLIC_DEFAULT_NAME: "DemoUser"
+		environment:
+			- NEXT_PUBLIC_SQLOPT_SERVICE_URL=http://backend:8000
+```
+
 ### 2. 本地开发启动
 
 ```bash
@@ -107,6 +135,8 @@ docker compose exec backend sh    # 进入后端容器
 
 1. **端口冲突**：如 3000/8000 被占用，请先释放端口或修改 `docker-compose.yml`。
 2. **构建/依赖报错**：请先 `npm install`，如遇 ESLint/TypeScript 报错请根据提示修复。
+3. **默认账号未生效**：确认已设置 `NEXT_PUBLIC_DEFAULT_EMAIL` 与 `NEXT_PUBLIC_DEFAULT_PASSWORD`，并且浏览器 `localStorage` 没有残留旧的登录态（可手动清除或使用应用内退出功能）。
+4. **希望禁用自动登录**：不设置默认账号即可；或在生产环境只保留用户手动登录入口。
 
 ---
 

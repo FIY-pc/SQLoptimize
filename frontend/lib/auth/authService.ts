@@ -4,6 +4,11 @@ import { TOKEN_STORAGE_KEY } from "../serviceUtils";
 
 export const API_BASE = process.env.NEXT_PUBLIC_SQLOPT_SERVICE_URL || "http://127.0.0.1:8000";
 
+// 默认账号（首次访问自动登录，不存在则自动注册）
+const DEFAULT_EMAIL = process.env.NEXT_PUBLIC_DEFAULT_EMAIL;
+const DEFAULT_PASSWORD = process.env.NEXT_PUBLIC_DEFAULT_PASSWORD;
+const DEFAULT_NAME = process.env.NEXT_PUBLIC_DEFAULT_NAME || "Default";
+
 export type AuthResponse = {
     access_token: string;
     refresh_token: string;
@@ -31,6 +36,8 @@ export type AuthState = {
     tokenType: string;
     userId: number;
     userName: string;
+    /** 标记是否为访客账号 */
+    guest?: boolean;
 };
 
 export const AUTH_CHANGED_EVENT = "sqlopt:auth-changed";
@@ -68,6 +75,8 @@ export function isLoggedIn(): boolean {
     return !!(a && a.accessToken);
 }
 
+// ...访客令牌相关逻辑已移除
+
 export function clearAuth() {
     if (typeof window === "undefined") return;
     try {
@@ -75,6 +84,30 @@ export function clearAuth() {
         window.localStorage.removeItem(TOKEN_STORAGE_KEY);
         emitAuthChanged("logout");
     } catch { }
+}
+
+/**
+ * 若本地无登录态且配置了默认账号环境变量，则自动尝试登录；
+ * 登录失败（账号不存在）时自动注册后再登录。
+ * 若用户已有登录态（包括手动登录或访客令牌），则保持现状不覆盖。
+ */
+export async function ensureDefaultAccount(): Promise<void> {
+    if (typeof window === "undefined") return;
+    if (getAuth()) return; // 已有登录态不覆盖
+    if (!DEFAULT_EMAIL || !DEFAULT_PASSWORD) return; // 未配置默认账号
+    try {
+        await loginUser({ email: DEFAULT_EMAIL, password: DEFAULT_PASSWORD });
+        console.info("[auth] default account logged in");
+        return;
+    } catch (e) {
+        // 账号可能不存在，尝试注册
+        try {
+            await registerUser({ name: DEFAULT_NAME, email: DEFAULT_EMAIL, password: DEFAULT_PASSWORD });
+            console.info("[auth] default account registered & logged in");
+        } catch (e2) {
+            console.warn("[auth] default account init failed", e, e2);
+        }
+    }
 }
 
 async function request<T>(path: string, body: unknown): Promise<T> {
