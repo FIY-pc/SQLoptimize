@@ -131,24 +131,190 @@ const ThreadWelcomeSuggestions: FC = () => {
     <div className="aui-thread-welcome-suggestions grid w-full gap-2 @md:grid-cols-2">
       {[
         {
-          title: "简单 SQL 语句优化",
-          label: "展示简单 SQL 语句优化的结果输出",
-          action: "SELECT id, name FROM t1 WHERE status = 'ok' UNION ALL SELECT id, name FROM t2 WHERE status = 'ok' ORDER BY id ASC, name ASC;",
+          title: "TPC-DS Q41",
+          label: "展示 TPC-DS Q41 的结果输出",
+          action: `SELECT DISTINCT(i_product_name)
+FROM item i1
+WHERE i_manufact_id BETWEEN 774 AND 774 + 40
+  AND (
+        SELECT COUNT(*) AS item_cnt
+        FROM item
+        WHERE 
+            (
+                i_manufact = i1.i_manufact
+                AND
+                (
+                    (i_category = 'Women' 
+                     AND (i_color = 'white' OR i_color = 'bisque')
+                     AND (i_units = 'Dozen' OR i_units = 'Unknown')
+                     AND (i_size = 'petite' OR i_size = 'extra large')
+                    )
+                    OR
+                    (i_category = 'Women' 
+                     AND (i_color = 'ivory' OR i_color = 'magenta')
+                     AND (i_units = 'Case' OR i_units = 'Cup')
+                     AND (i_size = 'economy' OR i_size = 'small')
+                    )
+                    OR
+                    (i_category = 'Men'
+                     AND (i_color = 'burlywood' OR i_color = 'forest')
+                     AND (i_units = 'Oz' OR i_units = 'Box')
+                     AND (i_size = 'large' OR i_size = 'N/A')
+                    )
+                    OR
+                    (i_category = 'Men'
+                     AND (i_color = 'indian' OR i_color = 'midnight')
+                     AND (i_units = 'Ton' OR i_units = 'N/A')
+                     AND (i_size = 'petite' OR i_size = 'extra large')
+                    )
+                )
+            )
+            OR
+            (
+                i_manufact = i1.i_manufact
+                AND
+                (
+                    (i_category = 'Women'
+                     AND (i_color = 'blush' OR i_color = 'floral')
+                     AND (i_units = 'Tbl' OR i_units = 'Ounce')
+                     AND (i_size = 'petite' OR i_size = 'extra large')
+                    )
+                    OR
+                    (i_category = 'Women'
+                     AND (i_color = 'drab' OR i_color = 'khaki')
+                     AND (i_units = 'Lb' OR i_units = 'Bundle')
+                     AND (i_size = 'economy' OR i_size = 'small')
+                    )
+                    OR
+                    (i_category = 'Men'
+                     AND (i_color = 'navy' OR i_color = 'linen')
+                     AND (i_units = 'Dram' OR i_units = 'Gram')
+                     AND (i_size = 'large' OR i_size = 'N/A')
+                    )
+                    OR
+                    (i_category = 'Men'
+                     AND (i_color = 'goldenrod' OR i_color = 'plum')
+                     AND (i_units = 'Gross' OR i_units = 'Tsp')
+                     AND (i_size = 'petite' OR i_size = 'extra large')
+                    )
+                )
+            )
+      ) > 0
+ORDER BY i_product_name
+LIMIT 100;
+`,
         },
         {
-          title: "复杂 SQL 语句优化",
-          label: "尝试优化一段复杂的 SQL 查询",
-          action: "select cntrycode, count(*) as numcust, sum(c_acctbal) as totacctbal from (select substring(c_phone from 1 for 2) as cntrycode, c_acctbal from customer where substring(c_phone from 1 for 2) in ('13', '31', '23', '29', '30', '18', '17') and c_acctbal > (select avg(c_acctbal) from customer where c_acctbal > 0.00 and substring(c_phone from 1 for 2) in ('13', '31', '23', '29', '30', '18', '17')) and not exists (select * from orders where o_custkey = c_custkey)) as custsale group by cntrycode order by cntrycode;",
+          title: "TPC-DS Q53",
+          label: "展示 TPC-DS Q53 的结果输出",
+          action: `SELECT *
+FROM (
+    SELECT 
+        i_manufact_id,
+        SUM(ss_sales_price) AS sum_sales,
+        AVG(SUM(ss_sales_price)) OVER (PARTITION BY i_manufact_id) AS avg_quarterly_sales
+    FROM 
+        item,
+        store_sales,
+        date_dim,
+        store
+    WHERE 
+        ss_item_sk = i_item_sk
+        AND ss_sold_date_sk = d_date_sk
+        AND ss_store_sk = s_store_sk
+        AND d_month_seq IN (
+            1176, 1176+1, 1176+2, 1176+3, 1176+4, 1176+5, 
+            1176+6, 1176+7, 1176+8, 1176+9, 1176+10, 1176+11
+        )
+        AND (
+            (i_category IN ('Books','Children','Electronics')
+             AND i_class IN ('personal','portable','reference','self-help')
+             AND i_brand IN ('scholaramalgamalg #14','scholaramalgamalg #7',
+                             'exportiunivamalg #9','scholaramalgamalg #9')
+            )
+            OR
+            (i_category IN ('Women','Music','Men')
+             AND i_class IN ('accessories','classical','fragrances','pants')
+             AND i_brand IN ('amalgimporto #1','edu packscholar #1',
+                             'exportiimporto #1','importoamalg #1')
+            )
+        )
+    GROUP BY 
+        i_manufact_id, d_qoy
+) tmp1
+WHERE 
+    CASE 
+        WHEN avg_quarterly_sales > 0 THEN 
+            ABS(sum_sales - avg_quarterly_sales) / avg_quarterly_sales
+        ELSE 
+            NULL
+    END > 0.1
+ORDER BY 
+    avg_quarterly_sales,
+    sum_sales,
+    i_manufact_id
+LIMIT 100;
+`,
         },
         {
-          title: "优化 SELECT 查询语句",
-          label: "查询合并 status = ok 的记录，按 id ,name 排序",
-          action: "SELECT id, name FROM t1 WHERE status = 'ok' UNION ALL SELECT id, name FROM t2 WHERE status = 'ok' ORDER BY id ASC, name ASC;",
+          title: "TPC-H Q17",
+          label: "展示 TPC-H Q17 的结果输出",
+          action: `SELECT 
+    SUM(l_extendedprice) / 7.0 AS avg_yearly
+FROM 
+    lineitem,
+    part
+WHERE 
+    p_partkey = l_partkey
+    AND p_brand = 'Brand#23'
+    AND p_container = 'MED BOX'
+    AND l_quantity < (
+        SELECT 
+            0.2 * AVG(l_quantity)
+        FROM 
+            lineitem
+        WHERE 
+            l_partkey = p_partkey
+    );
+`,
         },
         {
-          title: "输入你的 SQL 语句",
-          label: "输入你的 SQL 语句，体验优化效果",
-          action: "SELECT *;",
+          title: "TPC-H Q18",
+          label: "展示 TPC-H Q18 的结果输出",
+          action: `SELECT 
+    c_name,
+    c_custkey,
+    o_orderkey,
+    o_orderdate,
+    o_totalprice,
+    SUM(l_quantity)
+FROM 
+    customer,
+    orders,
+    lineitem
+WHERE 
+    o_orderkey IN (
+        SELECT 
+            l_orderkey
+        FROM 
+            lineitem
+        GROUP BY 
+            l_orderkey
+        HAVING 
+            SUM(l_quantity) > 300
+    )
+    AND c_custkey = o_custkey
+    AND o_orderkey = l_orderkey
+GROUP BY 
+    c_name,
+    c_custkey,
+    o_orderkey,
+    o_orderdate,
+    o_totalprice
+ORDER BY 
+    o_totalprice DESC,
+    o_orderdate;
+`,
         },
       ].map((suggestedAction, index) => (
         <m.div
