@@ -87,11 +87,11 @@ SQLoptimize 是一个面向 OpenTenBase 的智能 SQL 改写优化引擎。基�
 ### 后端启动
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/xjdysq/SQLoptimize
 cd sqloptimize
 
-# 安装依赖
-pip install -e .[dev]
+# 安装依赖（推荐使用 uv）
+uv sync
 
 # 配置环境变量
 cp .env.example .env
@@ -117,13 +117,13 @@ MYSQL_DATABASE=tpch_1g
 
 ```bash
 # 启动 API 服务
-uvicorn src.api.app:app --reload --port 8000
+uv run uvicorn src.api:app --port 8000
 ```
 
 ### CLI 模式
 
 ```bash
-python -m src.main "SELECT ..." --db_schema "CREATE TABLE ..."
+uv run python -m src.main "SELECT ..." --db_schema "CREATE TABLE ..."
 ```
 
 ### 前端启动
