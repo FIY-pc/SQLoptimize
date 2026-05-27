@@ -28,7 +28,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     
     # 从数据库获取用户信息
     user_repo = UserRepository()
-    user = user_repo.get_by_id(int(user_id))
+    user = await user_repo.get_by_id(int(user_id))
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

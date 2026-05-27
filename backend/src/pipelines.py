@@ -44,9 +44,9 @@ async def build_input_state(
     model_repo = ModelConnectionRepository()
     db_conn_repo = DatabaseConnectionRepository()
 
-    active_db_schema = db_schema_repo.get_active_by_user_id(user_id)
-    active_model = model_repo.get_active_by_user_id(user_id)
-    active_db_conn = db_conn_repo.get_active_by_user_id(user_id)
+    active_db_schema = await db_schema_repo.get_active_by_user_id(user_id)
+    active_model = await model_repo.get_active_by_user_id(user_id)
+    active_db_conn = await db_conn_repo.get_active_by_user_id(user_id)
 
     logger.debug(f"active_db_schema id: {active_db_schema.id}, schema_content: {active_db_schema.schema_content}")
     logger.debug(f"active_model id: {active_model.id}, model: {active_model.model}, enable_thinking: {active_model.enable_thinking}")

@@ -30,7 +30,7 @@ async def get_active_model_connection(
     """获取用户当前活跃的模型连接"""
     try:
         model_repo = ModelConnectionRepository()
-        active_connection = model_repo.get_active_by_user_id(current_user["id"])
+        active_connection = await model_repo.get_active_by_user_id(current_user["id"])
         
         if not active_connection:
             raise HTTPException(
@@ -74,7 +74,7 @@ async def set_active_model_connection(
         model_repo = ModelConnectionRepository()
         
         # 设置活跃连接
-        success = model_repo.set_active_by_user_id(current_user["id"], request.connection_id)
+        success = await model_repo.set_active_by_user_id(current_user["id"], request.connection_id)
         
         if not success:
             raise HTTPException(
@@ -105,9 +105,9 @@ async def get_user_models(
     try:
         model_repo = ModelConnectionRepository()
         if model:
-            connections = model_repo.get_by_user_and_model(current_user["id"], model)
+            connections = await model_repo.get_by_user_and_model(current_user["id"], model)
         else:
-            connections = model_repo.get_by_user_id(current_user["id"], skip, limit)
+            connections = await model_repo.get_by_user_id(current_user["id"], skip, limit)
         
         # 转换为响应模型
         model_responses = []
@@ -126,13 +126,13 @@ async def get_user_models(
             ))
         
         # 获取总数（用于分页）
-        total = model_repo.count_by_user_id(current_user["id"])
+        total = await model_repo.count_by_user_id(current_user["id"])
         
         # 计算是否还有更多数据
         has_more = (skip + len(model_responses)) < total
         
         # 获取当前用户活跃的模型连接ID
-        active_connection = model_repo.get_active_by_user_id(current_user["id"], auto_set_first=True)
+        active_connection = await model_repo.get_active_by_user_id(current_user["id"], auto_set_first=True)
         active_connection_id = active_connection.id if active_connection else 0
         
         logger.info(f"获取用户模型连接列表成功，用户ID: {current_user['id']}, 数量: {len(model_responses)}")
@@ -163,7 +163,7 @@ async def create_model_connection(
         model_repo = ModelConnectionRepository()
             
         # 检查模型名称是否已存在
-        if model_repo.exists_by_name(request.model_name):
+        if await model_repo.exists_by_name(request.model_name):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="模型名称已存在"
@@ -181,7 +181,7 @@ async def create_model_connection(
             user_id=current_user["id"]
         )
         
-        connection = model_repo.create(connection_data)
+        connection = await model_repo.create(connection_data)
         
         # 转换为响应模型
         response = ModelConnectionResponse(
@@ -217,7 +217,7 @@ async def get_model_connection(
     """获取指定的模型连接信息"""
     try:
         model_repo = ModelConnectionRepository()
-        connection = model_repo.get_by_id(connection_id)
+        connection = await model_repo.get_by_id(connection_id)
         
         if not connection:
             raise HTTPException(
@@ -269,7 +269,7 @@ async def update_model_connection(
         model_repo = ModelConnectionRepository()
             
         # 检查模型连接是否存在
-        connection = model_repo.get_by_id(connection_id)
+        connection = await model_repo.get_by_id(connection_id)
         if not connection:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -285,7 +285,7 @@ async def update_model_connection(
         
         # 如果更新模型名称，检查是否与其他连接冲突
         if request.model_name and request.model_name != connection.model_name:
-            if model_repo.exists_by_name(request.model_name):
+            if await model_repo.exists_by_name(request.model_name):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="模型名称已存在"
@@ -304,7 +304,7 @@ async def update_model_connection(
             )
         
         # 更新模型连接
-        updated_connection = model_repo.update(connection_id, update_data)
+        updated_connection = await model_repo.update(connection_id, update_data)
         
         # 转换为响应模型
         response = ModelConnectionResponse(
@@ -342,7 +342,7 @@ async def delete_model_connection(
         model_repo = ModelConnectionRepository()
             
         # 检查模型连接是否存在
-        connection = model_repo.get_by_id(connection_id)
+        connection = await model_repo.get_by_id(connection_id)
         if not connection:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -357,7 +357,7 @@ async def delete_model_connection(
             )
         
         # 删除模型连接
-        success = model_repo.delete(connection_id)
+        success = await model_repo.delete(connection_id)
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

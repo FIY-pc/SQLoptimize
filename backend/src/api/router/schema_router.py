@@ -30,7 +30,7 @@ async def get_active_db_schema(
     """获取用户当前活跃的数据库模式"""
     try:
         schema_repo = DbSchemaRepository()
-        active_schema = schema_repo.get_active_by_user_id(current_user["id"])
+        active_schema = await schema_repo.get_active_by_user_id(current_user["id"])
         
         if not active_schema:
             raise HTTPException(
@@ -70,7 +70,7 @@ async def set_active_db_schema(
         schema_repo = DbSchemaRepository()
         
         # 设置活跃模式
-        success = schema_repo.set_active_by_user_id(current_user["id"], request.schema_id)
+        success = await schema_repo.set_active_by_user_id(current_user["id"], request.schema_id)
         
         if not success:
             raise HTTPException(
@@ -99,7 +99,7 @@ async def get_user_schemas(
     """获取当前用户的数据库模式列表"""
     try:
         schema_repo = DbSchemaRepository()
-        schemas = schema_repo.get_by_user_id(current_user["id"], skip, limit)
+        schemas = await schema_repo.get_by_user_id(current_user["id"], skip, limit)
         
         # 转换为响应模型
         schema_responses = []
@@ -114,7 +114,7 @@ async def get_user_schemas(
             ))
         
         # 获取总数（用于分页）
-        total = schema_repo.count_by_user_id(current_user["id"])
+        total = await schema_repo.count_by_user_id(current_user["id"])
         
         # 计算是否还有更多数据
         has_more = (skip + len(schema_responses)) < total
@@ -169,7 +169,7 @@ async def create_db_schema(
             user_id=current_user["id"]
         )
         
-        schema = schema_repo.create(schema_data)
+        schema = await schema_repo.create(schema_data)
         
         # 转换为响应模型
         response = DbSchemaResponse(
@@ -201,7 +201,7 @@ async def get_db_schema(
     """获取指定的数据库模式信息"""
     try:
         schema_repo = DbSchemaRepository()
-        schema = schema_repo.get_by_id(schema_id)
+        schema = await schema_repo.get_by_id(schema_id)
         
         if not schema:
             raise HTTPException(
@@ -249,7 +249,7 @@ async def update_db_schema(
         schema_repo = DbSchemaRepository()
         
         # 检查数据库模式是否存在
-        schema = schema_repo.get_by_id(schema_id)
+        schema = await schema_repo.get_by_id(schema_id)
         if not schema:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -265,7 +265,7 @@ async def update_db_schema(
         
         # 如果更新模式名称，检查是否与其他模式冲突
         if request.schema_name and request.schema_name != schema.schema_name:
-            if schema_repo.exists_by_name(request.schema_name):
+            if await schema_repo.exists_by_name(request.schema_name):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="模式名称已存在"
@@ -284,7 +284,7 @@ async def update_db_schema(
             )
         
         # 更新数据库模式
-        updated_schema = schema_repo.update(schema_id, update_data)
+        updated_schema = await schema_repo.update(schema_id, update_data)
         
         # 转换为响应模型
         response = DbSchemaResponse(
@@ -318,7 +318,7 @@ async def delete_db_schema(
         schema_repo = DbSchemaRepository()
         
         # 检查数据库模式是否存在
-        schema = schema_repo.get_by_id(schema_id)
+        schema = await schema_repo.get_by_id(schema_id)
         if not schema:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -333,7 +333,7 @@ async def delete_db_schema(
             )
         
         # 删除数据库模式
-        success = schema_repo.delete(schema_id)
+        success = await schema_repo.delete(schema_id)
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -28,14 +28,14 @@ async def register(request: RegisterRequest):
         user_repo = UserRepository()
         
         # 检查邮箱是否已存在
-        if user_repo.exists_by_email(request.email):
+        if await user_repo.exists_by_email(request.email):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="邮箱已被注册"
             )
         
         # 检查用户名是否已存在
-        if user_repo.exists_by_name(request.name):
+        if await user_repo.exists_by_name(request.name):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="用户名已被使用"
@@ -48,7 +48,7 @@ async def register(request: RegisterRequest):
             password=password_manager.hash_password(request.password)
         )
         
-        user = user_repo.create(user_data)
+        user = await user_repo.create(user_data)
         
         # 生成令牌
         access_token = jwt_manager.create_access_token(str(user.id), user.email)
@@ -81,7 +81,7 @@ async def login(request: LoginRequest):
         user_repo = UserRepository()
             
         # 验证用户凭据
-        user = user_repo.get_by_email(request.email)
+        user = await user_repo.get_by_email(request.email)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -146,7 +146,7 @@ async def refresh_token(request: RefreshTokenRequest):
         
         # 验证用户是否存在
         user_repo = UserRepository()
-        user = user_repo.get_by_id(int(user_id))
+        user = await user_repo.get_by_id(int(user_id))
         if user is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -186,7 +186,7 @@ async def change_password(
     """修改密码"""
     try:
         user_repo = UserRepository()
-        user = user_repo.get_by_id(current_user["id"])
+        user = await user_repo.get_by_id(current_user["id"])
         
         if not user:
             raise HTTPException(
@@ -203,7 +203,7 @@ async def change_password(
         
         # 更新密码
         hashed_new_password = password_manager.hash_password(request.new_password)
-        user_repo.update(current_user["id"], {"password": hashed_new_password})
+        await user_repo.update(current_user["id"], {"password": hashed_new_password})
         
         logger.info(f"用户修改密码成功: {current_user['email']}")
         return {"message": "密码修改成功"}

@@ -1,17 +1,18 @@
 from fastapi import FastAPI
 from src.api.middleware import add_middleware
 from src.api.router import (
-    ai_router, 
-    auth_router, 
-    model_router, 
-    database_router, 
-    schema_router, 
+    ai_router,
+    auth_router,
+    model_router,
+    database_router,
+    schema_router,
     sql_router
 )
 from src.api.service_db import configure_service_db, migrate_service_db
 from src.models.base import Base
 from src.config import get_settings
 from src.utils.log_utils import setup_logging
+import asyncio
 
 
 settings = get_settings()
@@ -44,11 +45,8 @@ logger.info("Database setup complete")
 logger.info("Initializing admin user...")
 try:
     from src.api.utils.init_admin import init_admin_user
-    admin_init_success = init_admin_user()
-    if admin_init_success:
-        logger.info("Admin user initialization completed successfully")
-    else:
-        logger.warning("Admin user initialization failed or admin user already exists")
+    asyncio.run(init_admin_user())
+    logger.info("Admin user initialization completed successfully")
 except Exception as e:
     logger.error(f"Failed to initialize admin user: {e}")
 

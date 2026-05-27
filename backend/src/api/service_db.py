@@ -49,6 +49,16 @@ def get_service_db():
 
 
 async def get_service_db_async():
-    """Get an async database session."""
+    """Get an async database session (async generator for FastAPI Depends)."""
     async with service_db.async_session() as session:
         yield session
+
+
+def get_async_db():
+    """Get an async database session context manager.
+
+    Usage:
+        async with get_async_db() as db:
+            await db.execute(...)
+    """
+    return service_db.async_session()

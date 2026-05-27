@@ -33,7 +33,7 @@ async def get_active_database_connection(
     """获取用户当前活跃的数据库连接"""
     try:
         db_repo = DatabaseConnectionRepository()
-        active_connection = db_repo.get_active_by_user_id(current_user["id"])
+        active_connection = await db_repo.get_active_by_user_id(current_user["id"])
         
         if not active_connection:
             raise HTTPException(
@@ -74,7 +74,7 @@ async def set_active_database_connection(
         db_repo = DatabaseConnectionRepository()
         
         # 设置活跃连接
-        success = db_repo.set_active_by_user_id(current_user["id"], request.connection_id)
+        success = await db_repo.set_active_by_user_id(current_user["id"], request.connection_id)
         
         if not success:
             raise HTTPException(
@@ -105,9 +105,9 @@ async def get_user_databases(
     try:
         db_repo = DatabaseConnectionRepository()
         if database_type:
-            connections = db_repo.get_by_user_and_type(current_user["id"], database_type)
+            connections = await db_repo.get_by_user_and_type(current_user["id"], database_type)
         else:
-            connections = db_repo.get_by_user_id(current_user["id"], skip, limit)
+            connections = await db_repo.get_by_user_id(current_user["id"], skip, limit)
         
         # 转换为响应模型
         database_responses = []
@@ -123,13 +123,13 @@ async def get_user_databases(
             ))
         
         # 获取总数（用于分页）
-        total = db_repo.count_by_user_id(current_user["id"])
+        total = await db_repo.count_by_user_id(current_user["id"])
         
         # 计算是否还有更多数据
         has_more = (skip + len(database_responses)) < total
         
         # 获取当前用户活跃的数据库连接ID
-        active_connection = db_repo.get_active_by_user_id(current_user["id"], auto_set_first=True)
+        active_connection = await db_repo.get_active_by_user_id(current_user["id"], auto_set_first=True)
         active_connection_id = active_connection.id if active_connection else 0
         
         logger.info(f"获取用户数据库连接列表成功，用户ID: {current_user['id']}, 数量: {len(database_responses)}")
@@ -160,7 +160,7 @@ async def create_database_connection(
         db_repo = DatabaseConnectionRepository()
         
         # 检查数据库名称是否已存在
-        if db_repo.exists_by_name(request.database_name):
+        if await db_repo.exists_by_name(request.database_name):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="数据库名称已存在"
@@ -175,7 +175,7 @@ async def create_database_connection(
             user_id=current_user["id"]
         )
         
-        connection = db_repo.create(connection_data)
+        connection = await db_repo.create(connection_data)
         
         # 转换为响应模型
         response = DatabaseConnectionResponse(
@@ -208,7 +208,7 @@ async def get_database_connection(
     """获取指定的数据库连接信息"""
     try:
         db_repo = DatabaseConnectionRepository()
-        connection = db_repo.get_by_id(connection_id)
+        connection = await db_repo.get_by_id(connection_id)
         
         if not connection:
             raise HTTPException(
@@ -257,7 +257,7 @@ async def update_database_connection(
         db_repo = DatabaseConnectionRepository()
         
         # 检查数据库连接是否存在
-        connection = db_repo.get_by_id(connection_id)
+        connection = await db_repo.get_by_id(connection_id)
         if not connection:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -273,7 +273,7 @@ async def update_database_connection(
         
         # 如果更新数据库名称，检查是否与其他连接冲突
         if request.database_name and request.database_name != connection.database_name:
-            if db_repo.exists_by_name(request.database_name):
+            if await db_repo.exists_by_name(request.database_name):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="数据库名称已存在"
@@ -292,7 +292,7 @@ async def update_database_connection(
             )
         
         # 更新数据库连接
-        updated_connection = db_repo.update(connection_id, update_data)
+        updated_connection = await db_repo.update(connection_id, update_data)
         
         # 转换为响应模型
         response = DatabaseConnectionResponse(
@@ -327,7 +327,7 @@ async def delete_database_connection(
         db_repo = DatabaseConnectionRepository()
         
         # 检查数据库连接是否存在
-        connection = db_repo.get_by_id(connection_id)
+        connection = await db_repo.get_by_id(connection_id)
         if not connection:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -342,7 +342,7 @@ async def delete_database_connection(
             )
         
         # 删除数据库连接
-        success = db_repo.delete(connection_id)
+        success = await db_repo.delete(connection_id)
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -369,7 +369,7 @@ async def test_database_connection(
     """测试数据库连接"""
     try:
         db_repo = DatabaseConnectionRepository()
-        db_connection = db_repo.get_by_id(connection_id)
+        db_connection = await db_repo.get_by_id(connection_id)
         if not db_connection:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

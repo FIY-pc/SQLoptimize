@@ -24,7 +24,7 @@ async def run_sql(
 ):
     try:
         database_repo = DatabaseConnectionRepository()
-        database_connection = database_repo.get_active_by_user_id(current_user["id"])
+        database_connection = await database_repo.get_active_by_user_id(current_user["id"])
         if not database_connection:
             raise HTTPException(status_code=400, detail="数据库连接不存在")
         registry = DatabaseRegistry(database_connection.database_uri)
